@@ -1,0 +1,9 @@
+# Logitech Extreme F710
+axis_linear: 1          # Forward/Back = left thumbstick
+scale_linear: 0.3
+
+axis_angular: 2         # Rotate Left/Right = right thumbstick
+scale_angular: 1.88
+
+enable_button: 6        # LT
+
