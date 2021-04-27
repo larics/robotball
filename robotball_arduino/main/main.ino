@@ -66,17 +66,23 @@ void loop()
   info.seq = counter;
   infoPub.publish( &info );
 
-  // Calculate wheel speeds based on received velocity commands.
-  int vel_left  = round((g_vel_lin - g_vel_rot * g_ws / 2.0) / g_lwr * rad2pwm);
-  int vel_right = round((g_vel_lin + g_vel_rot * g_ws / 2.0) / g_rwr * rad2pwm);
+  int vel_left = 0;
+  int vel_right = 0;
+  
+  if (millis() - last_cmd_vel <= cmd_vel_timeout)
+  {
+    // Calculate wheel speeds based on received velocity commands.
+    vel_left  = round((g_vel_lin + g_vel_rot * g_ws / 2.0) / g_lwr * rad2pwm);
+    vel_right = round((g_vel_lin - g_vel_rot * g_ws / 2.0) / g_rwr * rad2pwm);
 
-  // Clamp the resulting values.
-  vel_left = constrain(vel_left, -255, 255);
-  vel_right = constrain(vel_right, -255, 255);
+    // Clamp the resulting values.
+    vel_left = constrain(vel_left, -255, 255);
+    vel_right = constrain(vel_right, -255, 255);    
+  }
   
   // Set the motor speeds.
-  motor1.setSpeed(vel_right);
-  motor2.setSpeed(-vel_left);  // "-" because the motor is mounted differently
+  motor1.setSpeed(-vel_right);
+  motor2.setSpeed(vel_left);  // "-" because the motor is mounted differently
   
   delay(100); // Update frequency is 10 Hz. 
 }
