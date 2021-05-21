@@ -2,7 +2,7 @@
   <arg name="js" default="/dev/input/js0"/>
   <arg name="joy_config" default="xbox" />
   <arg name="custom_config" default="true" />
-  <arg name="config_filepath" default="$(find robotball_driver)/config/$(arg joy_config).yaml"/>
+  <arg name="config_filepath" default="$(find robotball_driver)/cfg/$(arg joy_config).yaml"/>
 
   <!-- Launch joy teleop. Two versions for custom and existing configs. -->
   <include if="$(arg custom_config)" file="$(find teleop_twist_joy)/launch/teleop.launch">
