@@ -1,0 +1,11 @@
+Gyro calibration in rad/s: [0.0069500000000000004, 0.0029, -0.035]
+Magnetic Offset:
+	24.39
+	18.14
+	0.30
+Magnetic Mapping:
+	+0.596 +0.042 -0.009
+	+0.042 +0.934 +0.007
+	-0.009 +0.007 +1.122
+Magnetic Field
+	43.06
