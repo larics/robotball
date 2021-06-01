@@ -42,14 +42,25 @@ const float g_ws = 0.323;    // Wheel separation (m) == 32.3 cm
 const float g_lwr = 0.03875;  // Left wheel radius (m) == 38.75 mm
 const float g_rwr = 0.03875;  // Right wheel radius (m) == 38.75 mm
 
+// PID parameters
+double Kp_speed;
+double Ki_speed;
+double Kd_speed;
+double Kp_pitch;
+double Ki_pitch;
+double Kd_pitch;
+double Kp_hdg;
+double Ki_hdg;
+double Kd_hdg;
+
 // v_ref -> pitch
-PID PID_speed(&g_speed, &g_pitch_sp, &g_speed_sp, 2, 5, 1, DIRECT);  // In, Out, Sp, Kp, Ki, Kd
+PID PID_speed(&g_speed, &g_pitch_sp, &g_speed_sp, 2, 5, 1, DIRECT);  // In, Out, Sp, Kp, Ki, Kd (2, 5, 1)
 
 // pitch -> motor_speed (linear.x)
-PID PID_pitch(&g_pitch, &g_vel_lin, &g_pitch_sp, 0.3/1.57, 0, 0, DIRECT);  // In, Out, Sp, Kp, Ki, Kd
+PID PID_pitch(&g_pitch, &g_vel_lin, &g_pitch_sp, 0.3/1.57, 0, 0, DIRECT);  // In, Out, Sp, Kp, Ki, Kd (0.3/1.57, 0, 0)
 
 // hdg_ref -> motor_speed (angular.z)
-PID PID_hdg(&g_hdg, &g_vel_rot, &g_hdg_sp, 2, 5, 1, DIRECT);  // In, Out, Sp, Kp, Ki, Kd
+PID PID_hdg(&g_hdg, &g_vel_rot, &g_hdg_sp, 2, 5, 1, DIRECT);  // In, Out, Sp, Kp, Ki, Kd (2, 5, 1)
 /******************************************************************************/
 
 void setup() {
@@ -62,6 +73,7 @@ void setup() {
 
   PID_pitch.SetMode(AUTOMATIC);
   PID_pitch.SetOutputLimits(-0.3, 0.3);
+
 }
 
 
@@ -70,7 +82,18 @@ void loop() {
   AHRS_update(&g_roll, &g_pitch, &g_hdg);
 
   PID_pitch.Compute();
-
+  
+ // tuning the PID
+  if (Serial.available()>0){
+    read_pid(&Kp_speed, &Ki_speed, &Kd_speed, &Kp_pitch, &Ki_pitch, &Kd_pitch, &Kp_hdg, &Ki_hdg, &Kd_hdg);
+    PID_pitch.SetTunings(Kp_pitch, Ki_pitch, Kd_pitch);
+    PID_speed.SetTunings(Kp_speed, Ki_speed, Kd_speed);
+    PID_hdg.SetTunings(Kp_hdg, Ki_hdg, Kd_hdg);
+  
+    PID_pitch.Compute();
+    PID_speed.Compute();
+    PID_hdg.Compute();
+  }
 
   /* Control the motors. */
   int vel_left = 0;
@@ -85,13 +108,54 @@ void loop() {
     // Clamp the resulting values.
     vel_left = constrain(vel_left, -255, 255);
     vel_right = constrain(vel_right, -255, 255);
-    Serial.print(vel_left);
-    Serial.print("  ");
-    Serial.println(vel_right);
+    
   }
   
   // Set the motor speeds.
   motor_right.setSpeed(-vel_right);
   motor_left.setSpeed(vel_left);  // "-" because the motor is mounted differently
   /* --------------- */
+}
+
+
+double read_double(){
+    double n = 0;
+    int dec = 1;
+    double d;
+    bool pos = true;
+    while (true){
+      if (Serial.available() > 0){
+        char c = (Serial.read());
+        if (c == ';' || c == '>'){
+            return n;
+        }
+        else if (c == '.'){
+          pos = false;
+        }else{
+          d = c - '0';
+          if (pos) {
+            n= n*10 + d;
+          } else{
+            dec *= 10;
+            n += d/dec;
+          }
+       }
+      }
+    }
+}
+
+void read_pid(double *Kp_speed, double *Ki_speed, double *Kd_speed, double *Kp_pitch, double *Ki_pitch, double *Kd_pitch, double *Kp_hdg, double *Ki_hdg, double *Kd_hdg){
+        char c = (Serial.read());
+        if (c == '<'){
+          *Kp_speed = read_double();
+          *Ki_speed = read_double();
+          *Kd_speed = read_double();
+          *Kp_pitch = read_double();
+          *Ki_pitch = read_double();
+          *Kd_pitch = read_double();
+          *Kp_hdg = read_double();
+          *Ki_hdg = read_double();
+          *Kd_hdg = read_double();
+        }
+        return;
 }
