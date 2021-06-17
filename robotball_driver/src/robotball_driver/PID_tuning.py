@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import rospy
 import json
@@ -34,13 +34,14 @@ class PIDtuning(object):
             """.format(**config))
 
         # Store PID values
-	values = '<'
+        values = '<'
         for t in self.PID_types:
             for v in ['P', 'I', 'D']:
                 self.PID_values[t][v] = config['{}_{}'.format(t, v)]
-		values += str(self.PID_values[t][v]) + ';'
-	values = values[:-1]+'>'
-	arduino.write(values)
+                values += str(self.PID_values[t][v]) + ';'
+        values = values[:-1]+'>'
+        print(values)
+        arduino.write(bytes(values, 'utf-8'))
 
         return config
 

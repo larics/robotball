@@ -149,11 +149,11 @@ void AHRS_update(double* roll, double* pitch, double* heading)
 #if defined(FILTER_USE_RADIANS)
   *roll = filter.getRoll() * deg2rad;
   *pitch = filter.getPitch() * deg2rad;
-  *heading = filter.getYaw() * deg2rad - PI;
+  *heading = filter.getYaw() * deg2rad;
 #else
   *roll = filter.getRoll();
   *pitch = filter.getPitch();
-  *heading = filter.getYaw() - 180;
+  *heading = filter.getYaw();
 #endif
   
 #if defined(AHRS_INFO_OUTPUT)
