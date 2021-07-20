@@ -41,7 +41,7 @@ Adafruit_Mahony filter;             // fastest/smalleset
 /* Functions */
 void AHRS_setup() 
 {
-  short e = 0;
+  byte e = 0;
 
   if (!cal.begin())
     e = 1;
@@ -67,14 +67,14 @@ void AHRS_setup()
 
   if (e == 3)
   {
-    pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, HIGH);
     while (1) delay(10);
   }
   
-  accelerometer->printSensorDetails();
-  gyroscope->printSensorDetails();
-  magnetometer->printSensorDetails();
+  // Commented out for size savings. It removes 1352 bytes!
+  // accelerometer->printSensorDetails();
+  // gyroscope->printSensorDetails();
+  // magnetometer->printSensorDetails();
 
   setup_sensors();
   filter.begin(FILTER_UPDATE_RATE_HZ);
