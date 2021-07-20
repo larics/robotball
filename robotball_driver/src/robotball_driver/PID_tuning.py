@@ -7,11 +7,13 @@ import serial
 from dynamic_reconfigure.server import Server
 from robotball_driver.cfg import PIDConfig
 
-arduino = serial.Serial("/dev/ttyUSB0", baudrate=115200)
 
 class PIDtuning(object):
     def __init__(self):
+        
+        self.arduino = serial.Serial("/dev/ttyUSB0", baudrate=115200)
 
+        # PID tuning
         self.PID_types = ['vel', 'pitch', 'hdg']
         self.PID_values = {key: {} for key in self.PID_types}
         self.srv = Server(PIDConfig, self.callback)
@@ -41,7 +43,7 @@ class PIDtuning(object):
                 values += str(self.PID_values[t][v]) + ';'
         values = values[:-1]+'>'
         print(values)
-        arduino.write(bytes(values, 'utf-8'))
+        self.arduino.write(bytes(values, 'utf-8'))
 
         return config
 
