@@ -6,7 +6,9 @@ EncoderPins pins{2, 6, 3, 7};
 DiffDriveParams params{
     .lwr = 0.03875,
     .rwr = 0.03875,
-    .ws = 0.323
+    .ws = 0.323,
+    .sr = 0.1775,
+    .cr = 0.0666
 };
 int g_encoder_rate = 1680;
 

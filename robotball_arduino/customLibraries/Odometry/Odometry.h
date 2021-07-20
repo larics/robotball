@@ -4,18 +4,21 @@
 #include <Arduino.h>
 #include <Encoder.h>
 #include <math.h>
+#include "RobotUtilities.h"
 
 typedef struct {
-    int left_1;
-    int left_2;
-    int right_1;
-    int right_2;
+    byte left_1;
+    byte left_2;
+    byte right_1;
+    byte right_2;
 } EncoderPins;
 
 typedef struct {
     float lwr;  // Left wheel radius (m)
     float rwr;  // Right wheel radius (m)
     float ws;   // Wheel separation (m)
+    float sr;   // Outer shell radius (m)
+    float cr;   // Radius of the contact point between wheels and inner shell (m)
 } DiffDriveParams;
 
 
@@ -25,13 +28,11 @@ class DiffDriveOdom
         DiffDriveOdom(EncoderPins pins, int encoder_rate, DiffDriveParams params);
         void reset();
         void update();
-        void getEncoderShift(float* left_shift, float* right_shift, bool degrees);
-        void getWheelPos(float* left_pos, float* right_pos, bool degrees);
-        void getWheelOmega(float* left_omega, float* right_omega, bool degrees);
-        void getRobotVel(float* linear, float* angular, bool degrees);
-        void getRobotPos(float* x, float* y, float* theta, bool degrees);
-        static double wrap_0_2pi(double x);
-        static double wrap_pi_pi(double x);
+        void getEncoderShift(float* left_shift, float* right_shift, bool degrees = false);
+        void getWheelPos(float* left_pos, float* right_pos, bool degrees = false);
+        void getWheelOmega(float* left_omega, float* right_omega, bool degrees = false);
+        void getRobotVel(double* linear, double* angular, bool degrees = false);
+        void getRobotPos(float* x, float* y, float* theta, bool degrees = false);
 
     private:
         // Encoder hardware
@@ -39,10 +40,8 @@ class DiffDriveOdom
         Encoder* enc_right_;
         float COUNTER_PER_ROTATION_;
 
-        // Last update time and encoder positions
+        // Last update time
         unsigned long last_update_;
-        long encoder_ticks_left_;
-        long encoder_ticks_right_;
 
         // Velocities and positions of the wheels
         float pos_l_;
@@ -61,6 +60,8 @@ class DiffDriveOdom
         float lR_;
         float rR_;
         float b_;
+        float transmission_;
+
 };
 
 #endif
