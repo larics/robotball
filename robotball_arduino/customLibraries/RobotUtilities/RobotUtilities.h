@@ -10,6 +10,8 @@ namespace RobotUtils
 
 	/* wrap x -> [-PI,PI) */
 	double wrap_pi_pi(double);
+
+	double prepare_yaw(double, double);
 }
 
 

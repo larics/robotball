@@ -18,7 +18,7 @@
  *    reliable defaults, so we need to have the user set them.
  ***************************************************************************/
 PID::PID(double* Input, double* Output, double* Setpoint,
-        double Kp, double Ki, double Kd, int Ts, byte POn, byte ControllerDirection)
+        double Kp, double Ki, double Kd, int Ts, byte ControllerDirection)
 {
     myOutput = Output;
     myInput = Input;
@@ -31,21 +31,9 @@ PID::PID(double* Input, double* Output, double* Setpoint,
     SampleTime = Ts;							//default Controller Sample Time is 0.1 seconds
 
     controllerDirection = ControllerDirection;
-    PID::SetTunings(Kp, Ki, Kd, POn);
+    PID::SetTunings(Kp, Ki, Kd);
 
     lastTime = millis()-SampleTime;
-}
-
-/*Constructor (...)*********************************************************
- *    To allow backwards compatability for v1.1, or for people that just want
- *    to use Proportional on Error without explicitly saying so
- ***************************************************************************/
-
-PID::PID(double* Input, double* Output, double* Setpoint,
-        double Kp, double Ki, double Kd, int Ts, byte ControllerDirection)
-    :PID::PID(Input, Output, Setpoint, Kp, Ki, Kd, Ts, P_ON_E, ControllerDirection)
-{
-
 }
 
 
@@ -58,9 +46,9 @@ PID::PID(double* Input, double* Output, double* Setpoint,
 bool PID::Compute()
 {
    if(!inAuto) return false;
+
    unsigned long now = millis();
-   unsigned long timeChange = (now - lastTime);
-   if(timeChange>=SampleTime)
+   if(now - lastTime >= SampleTime)
    {
       /*Compute all the working error variables*/
       double input = *myInput;
@@ -68,40 +56,33 @@ bool PID::Compute()
       if (error > -deadzone && error < deadzone){
          error = 0;
       }
-      double dInput = (input - lastInput);
-      errSum += error;
 
-      /*Add Proportional on Measurement, if P_ON_M is specified*/
-      // if(!pOnE) outputSum-= kp * dInput;
+      /*Compute the control values*/
+      double up = kp * error;
+      double ui = ki * error + ui_old;
+      double ud = kd * (error - error_old);
 
-      // if(outputSum > outMax) outputSum= outMax;
-      // else if(outputSum < outMin) outputSum= outMin;
+      double output = up + ui + ud;
 
-      /*Add Proportional on Error, if P_ON_E is specified*/
-      double output;
-      if(pOnE) output = kp * error;
-      else output = 0;
-
-      /*Compute Rest of PID Output*/
-      output += ki * errSum - kd * dInput;
-
-	    if(output > outMax)
+      /* Limit the output and integral wind-up*/
+      if (output > outMax)
       {
         output = outMax;
-        errSum -= error;
+        ui = ui_old;
       }
-      else if(output < outMin) 
+      else if (output < outMin)
       {
         output = outMin;
-        errSum -= error;
+        ui = ui_old;
       }
-	    *myOutput = output;
 
-      /*Remember some variables for next time*/
-      lastInput = input;
-      lastTime = now;
-	    return true;
-   }
+      /*Update the values for next time*/
+      ui_old = ui;
+      error_old = error;
+
+      *myOutput = output;
+      return true;
+    }
    else return false;
 }
 
@@ -110,12 +91,9 @@ bool PID::Compute()
  * it's called automatically from the constructor, but tunings can also
  * be adjusted on the fly during normal operation
  ******************************************************************************/
-void PID::SetTunings(double Kp, double Ki, double Kd, byte POn)
+void PID::SetTunings(double Kp, double Ki, double Kd)
 {
   if (Kp<0 || Ki<0 || Kd<0) return;
-
-  pOn = POn;
-  pOnE = POn == P_ON_E;
 
   dispKp = Kp; dispKi = Ki; dispKd = Kd;
 
@@ -130,21 +108,7 @@ void PID::SetTunings(double Kp, double Ki, double Kd, byte POn)
       ki = (0 - ki);
       kd = (0 - kd);
    }
-
-  // if (ki == 0)
-  // {
-  //   outputSum = 0;  // Even if Ki is set to zero, outputSum would still have an
-  //                   // old value with possibly undesired integral effects.
-  // }
 }
-
-/* SetTunings(...)*************************************************************
- * Set Tunings using the last-rembered POn setting
- ******************************************************************************/
-void PID::SetTunings(double Kp, double Ki, double Kd){
-    SetTunings(Kp, Ki, Kd, pOn); 
-}
-
 
 /* SetOutputLimits(...)****************************************************
  *     This function will be used far more often than SetInputLimits.  while
@@ -165,8 +129,6 @@ void PID::SetOutputLimits(double Min, double Max)
 	   if(*myOutput > outMax) *myOutput = outMax;
 	   else if(*myOutput < outMin) *myOutput = outMin;
 
-	   // if(outputSum > outMax) outputSum= outMax;
-	   // else if(outputSum < outMin) outputSum= outMin;
    }
 }
 
@@ -187,24 +149,7 @@ void PID::SetDeadzone(double value)
 void PID::SetMode(byte Mode)
 {
     bool newAuto = (Mode == AUTOMATIC);
-    if(newAuto && !inAuto)
-    {  /*we just went from manual to auto*/
-        PID::Initialize();
-    }
     inAuto = newAuto;
-}
-
-/* Initialize()****************************************************************
- *	does all the things that need to happen to ensure a bumpless transfer
- *  from manual to automatic mode.
- ******************************************************************************/
-void PID::Initialize()
-{
-  // outputSum = *myOutput;
-  errSum = 0;
-  lastInput = *myInput;
-  // if(outputSum > outMax) outputSum = outMax;
-  // else if(outputSum < outMin) outputSum = outMin;
 }
 
 /* Status Funcions*************************************************************

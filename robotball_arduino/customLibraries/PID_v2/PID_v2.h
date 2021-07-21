@@ -12,14 +12,8 @@ class PID
     #define MANUAL  0
     #define DIRECT  0
     #define REVERSE  1
-    #define P_ON_M 0
-    #define P_ON_E 1
 
     //commonly used functions **************************************************************************
-    PID(double*, double*, double*,        // * constructor.  links the PID to the Input, Output, and 
-        double, double, double,           //   Setpoint.  Initial tuning parameters are also set here.
-        int, byte, byte);                 //   (overload for specifying proportional mode)
-
     PID(double*, double*, double*,        // * constructor.  links the PID to the Input, Output, and 
         double, double, double,           //   Setpoint.  Initial tuning parameters are also set here
         int, byte);
@@ -42,9 +36,7 @@ class PID
     //available but not commonly used functions ********************************************************
     void SetTunings(double, double,       // * While most users will set the tunings once in the 
                     double);              //   constructor, this function gives the user the option
-                                          //   of changing tunings during runtime for Adaptive control
-    void SetTunings(double, double,       // * overload for specifying proportional mode
-                    double, byte);             
+                                          //   of changing tunings during runtime for Adaptive control           
 
                         
     //Display functions ****************************************************************
@@ -54,7 +46,6 @@ class PID
     int GetMode();       // inside the PID.
 
   private:
-    void Initialize();
     
     double dispKp;        // * we'll hold on to the tuning parameters in user-entered 
     double dispKi;        //   format for display purposes
@@ -65,7 +56,6 @@ class PID
     double kd;            // * (D)erivative Tuning Parameter
 
     byte controllerDirection;
-    byte pOn;
 
     double *myInput;      // * Pointers to the Input, Output, and Setpoint variables
     double *myOutput;     //   This creates a hard link between the variables and the 
@@ -73,12 +63,12 @@ class PID
                           //   what these values are.  with pointers we'll just know.
           
     unsigned long lastTime;
-    double errSum, lastInput;
+    double ui_old, error_old;
 
     unsigned long SampleTime;
     double outMin, outMax;
     double deadzone;
-    bool inAuto, pOnE;
+    bool inAuto;
 };
 #endif
 

@@ -14,5 +14,20 @@ namespace RobotUtils
 	{
 	    //return min + wrap_0_2pi(x - min, max - min);
 	    return -M_PI + wrap_0_2pi(x + M_PI);
-	}	
+	}
+
+	double prepare_yaw(double setpoint, double measured)
+	{
+		double new_setpoint = wrap_pi_pi(setpoint);
+
+		if (abs(new_setpoint - measured) > M_PI)
+		{
+			if (measured > 0)
+				new_setpoint += 2*M_PI;
+			else
+				new_setpoint -= 2*M_PI;	
+		}
+
+		return new_setpoint;
+	}
 }

@@ -64,9 +64,9 @@ void setup ()
 
 	// Turn on or off individual PIDs.
 	// Pitch must be enabled if speed is enabled.
-    PID_pitch.SetMode(MANUAL);
-	PID_speed.SetMode(MANUAL);
-	PID_hdg.SetMode(MANUAL);
+    PID_pitch.SetMode(AUTOMATIC);
+	PID_speed.SetMode(AUTOMATIC);
+	PID_hdg.SetMode(AUTOMATIC);
 
 	PID_pitch.SetOutputLimits(-1, 1);
 	PID_speed.SetOutputLimits(-1, 1);
