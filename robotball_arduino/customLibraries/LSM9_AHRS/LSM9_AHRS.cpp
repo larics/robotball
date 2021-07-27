@@ -78,6 +78,8 @@ void AHRS_setup()
 
   setup_sensors();
   filter.begin(FILTER_UPDATE_RATE_HZ);
+  filter.setKp(10.0);
+  filter.setKi(1.0);
 
   Wire.setClock(400000); // 400KHz
 

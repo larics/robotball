@@ -20,7 +20,7 @@ namespace RobotUtils
 	{
 		double new_setpoint = wrap_pi_pi(setpoint);
 
-		if (abs(new_setpoint - measured) > M_PI)
+		if (fabs(new_setpoint - measured) > M_PI)
 		{
 			if (measured > 0)
 				new_setpoint += 2*M_PI;
