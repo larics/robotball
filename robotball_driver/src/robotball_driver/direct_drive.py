@@ -10,6 +10,7 @@ from geometry_msgs.msg import Twist, Point
 
 from dynamic_reconfigure.server import Server
 from robotball_driver.cfg import PIDConfig
+from robotball_driver.msg import MeasuredMsg, SetpointMsg, OutputMsg
 
 
 def wrap_0_2pi(x):
@@ -25,14 +26,12 @@ class DirectDrive(object):
         self.arduino.reset_output_buffer()
         in_data = None
 
-        self.setpoint_msg = Float32()
-        self.measured_msg = Float32()
-        self.output_msg = Float32()
-        self.speed_msg = Float32()
-        self.setpoint_pub = rospy.Publisher('setpoint', Float32, queue_size=1)
-        self.measured_pub = rospy.Publisher('measured', Float32, queue_size=1)
-        self.output_pub = rospy.Publisher('output', Float32, queue_size=1)
-        self.speed_pub = rospy.Publisher('speed', Float32, queue_size=1)
+        self.setpoint_msg = SetpointMsg()
+        self.measured_msg = MeasuredMsg()
+        self.output_msg = OutputMsg()
+        self.setpoint_pub = rospy.Publisher('setpoint', SetpointMsg, queue_size=1)
+        self.measured_pub = rospy.Publisher('measured', MeasuredMsg, queue_size=1)
+        self.output_pub = rospy.Publisher('output', OutputMsg, queue_size=1)
 
         # PID tuning
         self.PID_types = ['vel', 'pitch', 'hdg']
@@ -65,20 +64,24 @@ class DirectDrive(object):
         line = data.split('\r\n')
         if len(line) < 3:
             return
-        fields = line[-2].split(' | ')
-
-        self.setpoint_msg.data = float(fields[2].split()[1])
-        self.measured_msg.data = float(fields[3].split()[1])
-        self.output_msg.data = float(fields[5].split()[1])
-        self.speed_msg.data = float(fields[7].split()[1])
-
-        self.setpoint_pub.publish(self.setpoint_msg)
-        self.measured_pub.publish(self.measured_msg)
-        self.output_pub.publish(self.output_msg)
-        self.speed_pub.publish(self.speed_msg)
-
         print(line[-2])
 
+        fields = {elem[0]: float(elem[1]) for elem in map(lambda x: x.split(': '), line[-2].split(' | ')[:-1])}
+
+        self.setpoint_msg.speed = fields.get('S_S', 0)
+        self.setpoint_msg.pitch = fields.get('P_S', 0)
+        self.setpoint_msg.heading = fields.get('H_S', 0)
+        self.setpoint_pub.publish(self.setpoint_msg)
+
+        self.measured_msg.pitch = fields.get('P', 0)
+        self.measured_msg.roll = fields.get('R', 0)
+        self.measured_msg.heading = fields.get('H', 0)
+        self.measured_msg.speed = fields.get('S', 0)
+        self.measured_pub.publish(self.measured_msg)
+
+        self.output_msg.linear = fields.get('LIN', 0)
+        self.output_msg.angular = fields.get('ROT', 0)
+        self.output_pub.publish(self.output_msg)
 
     def reconfigure_callback(self, config, level):
         rospy.loginfo("""Reconfigure Request:
@@ -111,9 +114,9 @@ class DirectDrive(object):
         """Receive inputs from joystick."""
 
         if data.axes[5] == 1:
-            magnitude = 0.5
+            magnitude = 15/45
         elif data.axes[5] == -1:
-            magnitude = -0.5
+            magnitude = -15/45
         else:
             magnitude = data.axes[1]
 

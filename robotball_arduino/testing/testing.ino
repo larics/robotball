@@ -64,9 +64,9 @@ void setup ()
 
 	// Turn on or off individual PIDs.
 	// Pitch must be enabled if speed is enabled.
-    PID_pitch.SetMode(AUTOMATIC);
-	PID_speed.SetMode(AUTOMATIC);
-	PID_hdg.SetMode(AUTOMATIC);
+  PID_pitch.SetMode(MANUAL);
+	PID_speed.SetMode(MANUAL);
+	PID_hdg.SetMode(MANUAL);
 
 	PID_pitch.SetOutputLimits(-1, 1);
 	PID_speed.SetOutputLimits(-1, 1);
@@ -114,8 +114,8 @@ void loop() {
 
 	debug("S_S", g_speed_sp);
 	debug("S", g_speed);
-	// debug("H_S", g_hdg_sp);
-	// debug("H", g_hdg);
+	debug("H_S", g_hdg_sp);
+	debug("H", g_hdg);
 	debug("P_S", g_pitch_sp);
 	debug("P", g_pitch);
 	debug("R", g_roll);
@@ -125,31 +125,27 @@ void loop() {
 	double vel_left = 0;
 	double vel_right = 0;
 
-	if ((millis() - last_cmd_vel <= cmd_vel_timeout) || true)
+	vel_left = g_vel_lin - g_vel_rot;
+	vel_right = g_vel_lin + g_vel_rot;
+
+	debug("LIN", g_vel_lin);
+	debug("ROT", g_vel_rot);
+
+	double scale_factor = 1.0;
+
+	if (abs(vel_left) > 1 || abs(vel_right) > 1)
 	{
-		vel_left = g_vel_lin - g_vel_rot;
-		vel_right = g_vel_lin + g_vel_rot;
-
-		debug("LIN", g_vel_lin);
-		debug("ROT", g_vel_rot);
-
-		double scale_factor = 1.0;
-
-		if (abs(vel_left) > 1 || abs(vel_right) > 1)
-		{
-		  	double x = max(abs(vel_left), abs(vel_right));
-		  	scale_factor = 1.0 / x;
-		}
-
-		vel_left = round(vel_left * scale_factor * 255);
-		vel_right = round(vel_right * scale_factor * 255);
-
-		// debug("vL", vel_left);
-		// debug("vR", vel_right);
-		debug("SPD", g_speed);
-
-		
+	  	double x = max(abs(vel_left), abs(vel_right));
+	  	scale_factor = 1.0 / x;
 	}
+
+	vel_left = round(vel_left * scale_factor * 255);
+	vel_right = round(vel_right * scale_factor * 255);
+
+	// debug("vL", vel_left);
+	// debug("vR", vel_right);
+	debug("SPD", g_speed);
+
 
 	Serial.println();
 
