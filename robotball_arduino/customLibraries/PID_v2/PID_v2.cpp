@@ -108,6 +108,9 @@ void PID::SetTunings(double Kp, double Ki, double Kd)
       ki = (0 - ki);
       kd = (0 - kd);
    }
+
+   if (ki == 0)
+    ui_old = 0;
 }
 
 /* SetOutputLimits(...)****************************************************

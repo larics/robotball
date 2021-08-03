@@ -45,7 +45,7 @@ double g_vel_rot;
 unsigned long last_cmd_vel;  // Last time velocity command was received
 
 // v_ref -> pitch
-PID PID_speed(&g_speed, &g_pitch_sp, &g_speed_sp, 0, 0, 0, 100, DIRECT);  // In, Out, Sp, Kp, Ki, Kd (2, 5, 1), Ts
+PID PID_speed(&g_speed, &g_pitch_sp, &g_speed_sp, 0, 0, 0, 100, REVERSE);  // In, Out, Sp, Kp, Ki, Kd (2, 5, 1), Ts
 
 // pitch -> motor_speed (linear.x)
 PID PID_pitch(&g_pitch, &g_vel_lin, &g_pitch_sp, 0, 0, 0, 20, REVERSE); // In, Out, Sp, Kp, Ki, Kd (0.3/1.57, 0, 0), Ts
@@ -65,12 +65,12 @@ void setup ()
 
 	// Turn on or off individual PIDs.
 	// Pitch must be enabled if speed is enabled.
-  PID_pitch.SetMode(MANUAL);
-	PID_speed.SetMode(MANUAL);
-	PID_hdg.SetMode(MANUAL);
+  PID_pitch.SetMode(AUTOMATIC);
+	PID_speed.SetMode(AUTOMATIC);
+	PID_hdg.SetMode(AUTOMATIC);
 
 	PID_pitch.SetOutputLimits(-1, 1);
-	PID_speed.SetOutputLimits(-1, 1);
+	PID_speed.SetOutputLimits(-g_pitch_scale, g_pitch_scale);
 	PID_hdg.SetOutputLimits(-1, 1);
 
 	PID_pitch.SetDeadzone(0);

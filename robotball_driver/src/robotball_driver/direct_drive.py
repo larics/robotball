@@ -24,7 +24,9 @@ class DirectDrive(object):
         self.arduino = serial.Serial("/dev/ttyUSB0", baudrate=115200)
         self.arduino.reset_input_buffer()
         self.arduino.reset_output_buffer()
+        self.first_pass = True
         in_data = None
+        rospy.sleep(1)
 
         self.setpoint_msg = SetpointMsg()
         self.measured_msg = MeasuredMsg()
@@ -99,6 +101,9 @@ class DirectDrive(object):
             """.format(**config))
 
         # Store PID values
+        if self.first_pass:
+            rospy.sleep(1)
+            self.first_pass = False
         values = '<'
         for t in self.PID_types:
             for v in ['P', 'I', 'D']:
@@ -114,18 +119,25 @@ class DirectDrive(object):
         """Receive inputs from joystick."""
 
         if data.axes[5] == 1:
-            magnitude = 15/45
+            magnitude = 30/45
         elif data.axes[5] == -1:
-            magnitude = -15/45
+            magnitude = -30/45
         else:
             magnitude = data.axes[1]
+
+        
 
 
         if data.axes[2] != 0 or data.axes[3] != 0:
             direction = wrap_pi_pi(math.atan2(data.axes[3], -data.axes[2]) - math.pi / 2)
             self.last_direction = direction
         else:
-            direction = 0
+            if data.axes[4] == 1:
+                direction = math.pi / 2
+            elif data.axes[4] == -1:
+                direction = -math.pi / 2
+            else:
+                direction = 0
 
         self.dataToWrite = '['+str(round(magnitude, 5))+';'+str(round(direction, 5))+']'
         # print(self.dataToWrite)
