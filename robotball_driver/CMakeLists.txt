@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   message_generation
+  geometry_msgs
 )
 
 find_package(catkin REQUIRED dynamic_reconfigure)
@@ -54,6 +55,7 @@ add_message_files(
   MeasuredMsg.msg
   OutputMsg.msg
   SetpointMsg.msg
+  IMU.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -74,6 +76,7 @@ add_message_files(
 generate_messages(
   DEPENDENCIES
   std_msgs
+  geometry_msgs
 )
 
 ################################################
@@ -107,7 +110,7 @@ generate_dynamic_reconfigure_options(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES robotball_driver
- CATKIN_DEPENDS message_runtime
+ CATKIN_DEPENDS message_runtime geometry_msgs
 #  DEPENDS system_lib
 )
 
