@@ -1,9 +1,10 @@
 #include <CytronMotorDriver.h>
 #include <PID_v2.h>
-#include "LSM9_AHRS.h"
+#include "LSM9_Mahony.h"
 #include "Odometry.h"
 #include "setup.h"
 #include "utilities.h"
+
 
 /************************ MOTORS-RELATED SETUP ********************************/
 // Addapted from: https://github.com/CytronTechnologies/CytronMotorDriver

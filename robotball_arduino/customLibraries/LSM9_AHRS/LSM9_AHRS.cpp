@@ -7,6 +7,7 @@
 // Based on  https://github.com/PaulStoffregen/NXPMotionSense with adjustments
 // to Adafruit Unified Sensor interface
 
+#include "RobotUtilities.h"
 
 /* Sensor libraries and setup */
 #include <Adafruit_Sensor_Calibration.h>
@@ -14,8 +15,7 @@
 
 Adafruit_Sensor *accelerometer, *gyroscope, *magnetometer;
 
-#include "LSM9DS.h"
-
+#include "LSM9DS1.h"
 
 /* Pick your filter! slower == better quality output */
 //Adafruit_NXPSensorFusion filter;  // slowest
@@ -78,8 +78,8 @@ void AHRS_setup()
 
   setup_sensors();
   filter.begin(FILTER_UPDATE_RATE_HZ);
-  filter.setKp(10.0);
-  filter.setKi(1.0);
+  filter.setKp(5.0);
+  filter.setKi(0.5);
 
   Wire.setClock(400000); // 400KHz
 
@@ -113,10 +113,15 @@ void AHRS_update(double* roll, double* pitch, double* heading)
   gz = gyro.gyro.z * SENSORS_RADS_TO_DPS;
 
   // Update the SensorFusion filter
-  filter.update(gz, -gy, -gx, 
-                accel.acceleration.z, -accel.acceleration.y, -accel.acceleration.x, 
-                mag.magnetic.z, -mag.magnetic.y, -mag.magnetic.x);
+  // filter.update(gz, -gy, -gx, 
+  //               accel.acceleration.z, -accel.acceleration.y, -accel.acceleration.x, 
+  //               mag.magnetic.z, -mag.magnetic.y, -mag.magnetic.x);
+  filter.update(gx, gy, gz, 
+                accel.acceleration.x, accel.acceleration.y, accel.acceleration.z, 
+                mag.magnetic.x, mag.magnetic.y, mag.magnetic.z);
                 
+
+
 #if defined(AHRS_DEBUG_OUTPUT)
   Serial.print("Update took "); Serial.print(millis()-timestamp); Serial.println(" ms");
 #endif
@@ -135,14 +140,24 @@ void AHRS_update(double* roll, double* pitch, double* heading)
 #endif
 
   // print the heading, pitch and roll
+  float w, x, y, z;
+  filter.getQuaternion(&w, &x, &y, &z);
+  RobotUtils::multiply_quaternions(&w, &x, &y, &z, 1, 0, 0, 0);
+
 #if defined(FILTER_USE_RADIANS)
-  *roll = filter.getRoll() * DEG_TO_RAD;
-  *pitch = filter.getPitch() * DEG_TO_RAD;
-  *heading = filter.getYaw() * DEG_TO_RAD - PI;
+  *roll = atan2f(w * x + y * z, 0.5f - x * x - y * y);
+  *pitch = asinf(-2.0f * (x * z - w * y));
+  *heading = atan2f(x * y + w * z, 0.5f - y * y - z * z);
+  // *roll = filter.getRoll() * DEG_TO_RAD;
+  // *pitch = filter.getPitch() * DEG_TO_RAD;
+  // *heading = filter.getYaw() * DEG_TO_RAD - PI;
 #else
-  *roll = filter.getRoll();
-  *pitch = filter.getPitch();
-  *heading = filter.getYaw() - 180;
+  *roll = atan2f(w * x + y * z, 0.5f - x * x - y * y) * RAD_TO_DEG;
+  *pitch = asinf(-2.0f * (x * z - w * y)) * RAD_TO_DEG;
+  *heading = atan2f(x * y + w * z, 0.5f - y * y - z * z) * RAD_TO_DEG;
+  // *roll = filter.getRoll();
+  // *pitch = filter.getPitch();
+  // *heading = filter.getYaw() - 180;
 #endif
   
 #if defined(AHRS_INFO_OUTPUT)

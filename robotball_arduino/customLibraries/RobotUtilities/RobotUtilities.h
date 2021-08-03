@@ -12,6 +12,9 @@ namespace RobotUtils
 	double wrap_pi_pi(double);
 
 	double prepare_yaw(double, double);
+
+	void multiply_quaternions(float *w1, float *x1, float *y1, float *z1,
+							  float w2, float x2, float y2, float z2);
 }
 
 
