@@ -1,0 +1,24 @@
+<launch>
+  <env name="ROSCONSOLE_FORMAT" value="[${severity}] [${node}]> ${message}"/>
+
+  <arg name="num" default="5"/>
+  <arg name="setup" default="5_plus"/>
+
+  <arg name="map_world" default="$(find robotball_path)/resources/worlds/$(arg setup).world"/>
+  <arg name="map_yaml" default="$(find robotball_path)/resources/maps/default.yaml"/>
+
+  <!-- Start Stage simulator. -->
+  <node pkg="stage_ros" type="stageros" name="simulator" args="$(arg map_world)"/>
+  <node pkg="robotball_path" type="simulation_tf.py" name="simulation_tf"/>
+
+  <!-- Set default parameters. -->
+  <param name="num_of_robots" type="int" value="$(arg num)"/>
+  <rosparam command="load" file="$(find robotball_path)/cfg/$(arg setup).yaml"/>
+
+  <!-- Start trajectory generators and followers. -->
+  <node pkg="robotball_path" type="start.sh" name="launcher" output="screen"/>
+
+  <!-- Start rviz. -->
+  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find robotball_path)/launch/default.rviz"/>
+  <param name="robot_description" textfile="$(find robotball_path)/resources/simple_ball.urdf"/>
+</launch>
