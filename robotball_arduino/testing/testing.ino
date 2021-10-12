@@ -11,14 +11,14 @@
 // Script name: PWM_PWM_DUAL.ino
 
 // Configure the motor driver.
-CytronMD motor_left(PWM_PWM, 5, 9);     // PWM 1A = Pin 5, PWM 1B = Pin 9.   << LEFT 
-CytronMD motor_right(PWM_PWM, 10, 11);  // PWM 2A = Pin 10, PWM 2B = Pin 11. << RIGHT 
+CytronMD motor_left(PWM_PWM, 5, 6);     // PWM 1A = Pin 5, PWM 1B = Pin 6.   << LEFT 
+CytronMD motor_right(PWM_PWM, 9, 10);   // PWM 2A = Pin 9, PWM 2B = Pin 10.  << RIGHT 
 /******************************************************************************/
 
 /*********************** ODOMETRY-RELATED SETUP *******************************/
-// Left  Encoder 1 = Pin 2, Left  Encoder 1 = Pin 6
-// Right Encoder 1 = Pin 3, Right Encoder 1 = Pin 7
-const EncoderPins pins{2, 6, 3, 7};
+// Left  Encoder 1 = Pin 4, Left  Encoder 2 = Pin 7
+// Right Encoder 1 = Pin 8, Right Encoder 2 = Pin 11
+const EncoderPins pins{4, 7, 8, 11};
 const DiffDriveParams params{
     .lwr = g_lwr,
     .rwr = g_rwr,
@@ -61,13 +61,13 @@ void setup ()
 
 	pinMode(LED_BUILTIN, OUTPUT);
 
-	AHRS_setup();
+	// AHRS_setup();
 
 	// Turn on or off individual PIDs.
 	// Pitch must be enabled if speed is enabled.
-  PID_pitch.SetMode(AUTOMATIC);
-	PID_speed.SetMode(AUTOMATIC);
-	PID_hdg.SetMode(AUTOMATIC);
+  PID_pitch.SetMode(MANUAL);
+	PID_speed.SetMode(MANUAL);
+	PID_hdg.SetMode(MANUAL);
 
 	PID_pitch.SetOutputLimits(-1, 1);
 	PID_speed.SetOutputLimits(-g_pitch_scale, g_pitch_scale);
@@ -87,7 +87,7 @@ void loop() {
 	}
 
 	/* Get the latest orientation data. */
-	AHRS_update(&g_roll, &g_pitch, &g_hdg);
+	// AHRS_update(&g_roll, &g_pitch, &g_hdg);
 
 	/* Handle yaw wrapping */
 	if (abs(g_hdg - g_hdg_sp) > PI)

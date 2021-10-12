@@ -21,12 +21,12 @@ def wrap_pi_pi(x):
 
 class DirectDrive(object):
     def __init__(self):
-        self.arduino = serial.Serial("/dev/ttyUSB0", baudrate=115200)
+        self.arduino = serial.Serial("/dev/ttyACM0", baudrate=115200)
         self.arduino.reset_input_buffer()
         self.arduino.reset_output_buffer()
         self.first_pass = True
         in_data = None
-        rospy.sleep(1)
+        rospy.sleep(1)  
 
         self.setpoint_msg = SetpointMsg()
         self.measured_msg = MeasuredMsg()
@@ -124,9 +124,7 @@ class DirectDrive(object):
             magnitude = -30/45
         else:
             magnitude = data.axes[1]
-
-        
-
+            
 
         if data.axes[2] != 0 or data.axes[3] != 0:
             direction = wrap_pi_pi(math.atan2(data.axes[3], -data.axes[2]) - math.pi / 2)
