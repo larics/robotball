@@ -1,12 +1,12 @@
 #include <CytronMotorDriver.h>
 #include <PID_v2.h>
-#include "LSM9_Mahony.h"
+#include "AHRS.h"
 #include "Odometry.h"
 #include "setup.h"
 #include "utilities.h"
 
 
-/************************ MOTORS-RELATED SETUP ********************************/
+/*************************** MOTORS-RELATED SETUP *****************************/
 // Addapted from: https://github.com/CytronTechnologies/CytronMotorDriver
 // Script name: PWM_PWM_DUAL.ino
 
@@ -15,7 +15,7 @@ CytronMD motor_left(PWM_PWM, 5, 6);     // PWM 1A = Pin 5, PWM 1B = Pin 6.   << 
 CytronMD motor_right(PWM_PWM, 9, 10);   // PWM 2A = Pin 9, PWM 2B = Pin 10.  << RIGHT 
 /******************************************************************************/
 
-/*********************** ODOMETRY-RELATED SETUP *******************************/
+/************************** ODOMETRY-RELATED SETUP ****************************/
 // Left  Encoder 1 = Pin 4, Left  Encoder 2 = Pin 7
 // Right Encoder 1 = Pin 8, Right Encoder 2 = Pin 11
 const EncoderPins pins{4, 7, 8, 11};
@@ -29,7 +29,12 @@ const DiffDriveParams params{
 DiffDriveOdom odometry(pins, g_encoder_rate, params);
 /******************************************************************************/
 
+/**************************** IMU-RELATED SETUP *******************************/
+Adafruit_BNO055 bno = Adafruit_BNO055(-1, 0x28);
+/******************************************************************************/
+
 /************************* CONTROL-RELATED SETUP ******************************/
+#define SAMPLE_RATE_MS (10)
 double g_speed_sp;
 double g_pitch_sp;
 double g_hdg_sp;
@@ -70,9 +75,23 @@ void setup ()
 	pinMode(led_pin, OUTPUT);
 	digitalWrite(led_pin, HIGH);
 
-	// AHRS_setup();
+	/* Set up the BNO055 IMU. */
+  if(!bno.begin())
+  {
+    // There was a problem detecting the BNO055.
+    while(1) {
+    	digitalWrite(led_pin, LOW);
+    	delay(500);
+    	digitalWrite(led_pin, HIGH);
+    	delay(500);
+    }
+  }
+  delay(1000);
+  //bno.setAxisRemap(Adafruit_BNO055::REMAP_CONFIG_P0);
+  bno.setExtCrystalUse(true);
 
-	// Turn on or off individual PIDs.
+
+	/* Turn on or off individual PIDs. */
 	// Pitch must be enabled if speed is enabled.
   PID_pitch.SetMode(MANUAL);
 	PID_speed.SetMode(MANUAL);
@@ -98,7 +117,7 @@ void loop() {
 	}
 
 	/* Get the latest orientation data. */
-	// AHRS_update(&g_roll, &g_pitch, &g_hdg);
+	AHRS_update(&g_roll, &g_pitch, &g_hdg);
 
 	/* Handle yaw wrapping */
 	if (abs(g_hdg - g_hdg_sp) > PI)
@@ -158,6 +177,8 @@ void loop() {
 	// debug("vR", vel_right);
 	debug("SPD", g_speed);
 
+	int bat_level = analogRead(bat_pin);
+	debug("BAT", bat_level);
 
 	Serial.println();
 
