@@ -29,7 +29,7 @@ const DiffDriveParams params{
 DiffDriveOdom odometry(pins, g_encoder_rate, params);
 /******************************************************************************/
 
-/*********************** CONTROL-RELATED SETUP *******************************/
+/************************* CONTROL-RELATED SETUP ******************************/
 double g_speed_sp;
 double g_pitch_sp;
 double g_hdg_sp;
@@ -54,12 +54,21 @@ PID PID_pitch(&g_pitch, &g_vel_lin, &g_pitch_sp, 0, 0, 0, 20, REVERSE); // In, O
 PID PID_hdg(&g_hdg, &g_vel_rot, &g_hdg_sp, 0, 0, 0, 50, DIRECT);  // In, Out, Sp, Kp, Ki, Kd (2, 5, 1), Ts
 /******************************************************************************/
 
+/*************************** LOW-LEVEL STUFF **********************************/
+const int8_t led_pin = 2;
+const int8_t led_status = 1;
+
+const int8_t bat_pin = A1;
+/******************************************************************************/
+
 void setup ()
 {
 	Serial.begin(115200);
 	while (!Serial) yield();
 
 	pinMode(LED_BUILTIN, OUTPUT);
+	pinMode(led_pin, OUTPUT);
+	digitalWrite(led_pin, HIGH);
 
 	// AHRS_setup();
 
@@ -80,6 +89,8 @@ void setup ()
 
 void loop() {
 	double ignore;
+
+	Serial.print("STRT! ");
 
 	/* Read input on Serial */
 	if (Serial.available() > 0) {
@@ -230,7 +241,7 @@ void read_and_set() {
 		else
 		{
 			g_vel_lin = read_double(';') * g_default_scale;
-			g_vel_rot = read_double(']') / (PI / 2);
+			g_vel_rot = read_double(']') / (PI);
 		}
 	}
 }

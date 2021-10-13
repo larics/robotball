@@ -22,10 +22,9 @@ def wrap_pi_pi(x):
 class DirectDrive(object):
     def __init__(self):
         self.arduino = serial.Serial("/dev/ttyACM0", baudrate=115200)
-        self.arduino.reset_input_buffer()
-        self.arduino.reset_output_buffer()
         self.first_pass = True
         in_data = None
+        self.buffer = ''
         rospy.sleep(1)  
 
         self.setpoint_msg = SetpointMsg()
@@ -46,6 +45,8 @@ class DirectDrive(object):
 
         rate = rospy.Rate(100);
         last_published = rospy.get_time()
+        self.arduino.reset_input_buffer()
+        self.arduino.reset_output_buffer()
         while not rospy.is_shutdown():
             now = rospy.get_time()
             if self.dataToWrite is not None and (now - last_published > 0.1):
@@ -64,26 +65,39 @@ class DirectDrive(object):
 
     def parse_data(self, data):
         line = data.split('\r\n')
-        if len(line) < 3:
+        # print('###', data)
+        # print('---', line)
+        # print()
+        self.buffer += line[0]
+        if len(line) == 1:
             return
-        print(line[-2])
+        elif len(line) == 2:
+            if self.buffer.startswith('STRT! '):
+                self.buffer = self.buffer.split('STRT! ')[1]
+                print(self.buffer)
+                fields = {elem[0]: float(elem[1]) 
+                          for elem in map(lambda x: x.split(': '), self.buffer.split(' | ')[:-1])}
 
-        fields = {elem[0]: float(elem[1]) for elem in map(lambda x: x.split(': '), line[-2].split(' | ')[:-1])}
+                self.setpoint_msg.speed = fields.get('S_S', 0)
+                self.setpoint_msg.pitch = fields.get('P_S', 0)
+                self.setpoint_msg.heading = fields.get('H_S', 0)
+                self.setpoint_pub.publish(self.setpoint_msg)
 
-        self.setpoint_msg.speed = fields.get('S_S', 0)
-        self.setpoint_msg.pitch = fields.get('P_S', 0)
-        self.setpoint_msg.heading = fields.get('H_S', 0)
-        self.setpoint_pub.publish(self.setpoint_msg)
+                self.measured_msg.pitch = fields.get('P', 0)
+                self.measured_msg.roll = fields.get('R', 0)
+                self.measured_msg.heading = fields.get('H', 0)
+                self.measured_msg.speed = fields.get('S', 0)
+                self.measured_pub.publish(self.measured_msg)
 
-        self.measured_msg.pitch = fields.get('P', 0)
-        self.measured_msg.roll = fields.get('R', 0)
-        self.measured_msg.heading = fields.get('H', 0)
-        self.measured_msg.speed = fields.get('S', 0)
-        self.measured_pub.publish(self.measured_msg)
+                self.output_msg.linear = fields.get('LIN', 0)
+                self.output_msg.angular = fields.get('ROT', 0)
+                self.output_pub.publish(self.output_msg)
+            self.buffer = line[1]
+        else:
+            rospy.logerr("Parsed data has two newlines. This shouldn't happen.")
+            return
 
-        self.output_msg.linear = fields.get('LIN', 0)
-        self.output_msg.angular = fields.get('ROT', 0)
-        self.output_pub.publish(self.output_msg)
+        
 
     def reconfigure_callback(self, config, level):
         rospy.loginfo("""Reconfigure Request:
