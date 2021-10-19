@@ -73,23 +73,9 @@ void setup ()
 
 	pinMode(LED_BUILTIN, OUTPUT);
 	pinMode(led_pin, OUTPUT);
-	digitalWrite(led_pin, HIGH);
 
 	/* Set up the BNO055 IMU. */
-  if(!bno.begin())
-  {
-    // There was a problem detecting the BNO055.
-    while(1) {
-    	digitalWrite(led_pin, LOW);
-    	delay(500);
-    	digitalWrite(led_pin, HIGH);
-    	delay(500);
-    }
-  }
-  delay(1000);
-  //bno.setAxisRemap(Adafruit_BNO055::REMAP_CONFIG_P0);
-  bno.setExtCrystalUse(true);
-
+	setup_test_BNO055();
 
 	/* Turn on or off individual PIDs. */
 	// Pitch must be enabled if speed is enabled.

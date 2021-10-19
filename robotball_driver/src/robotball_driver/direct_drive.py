@@ -21,7 +21,7 @@ def wrap_pi_pi(x):
 
 class DirectDrive(object):
     def __init__(self):
-        self.arduino = serial.Serial("/dev/ttyACM0", baudrate=115200)
+        self.arduino = serial.Serial("/dev/tty_arduino", baudrate=115200)
         self.first_pass = True
         in_data = None
         self.buffer = ''
