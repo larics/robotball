@@ -1,7 +1,19 @@
+#include <ros.h>
+#include <geometry_msgs/Vector3.h>
+#include <robotball_msgs/Odometry.h>
+#include <robotball_msgs/Status.h>
+#include <robotball_msgs/Debug.h>
+#include <robotball_msgs/IMU.h>
+#include <robotball_msgs/DynReconf.h>
+
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BNO055.h>
+#include <utility/imumaths.h>
+#include <arduino-timer.h>
 #include <CytronMotorDriver.h>
 #include <PID_v2.h>
-#include "AHRS.h"
-#include "Odometry.h"
+#include <Odometry.h>
+
 #include "setup.h"
 #include "utilities.h"
 
@@ -31,10 +43,11 @@ DiffDriveOdom odometry(pins, g_encoder_rate, params);
 
 /**************************** IMU-RELATED SETUP *******************************/
 Adafruit_BNO055 bno = Adafruit_BNO055(-1, 0x28);
+const imu::Quaternion rot_offset(0.5, -0.5, 0.5, 0.5);
+
 /******************************************************************************/
 
 /************************* CONTROL-RELATED SETUP ******************************/
-#define SAMPLE_RATE_MS (10)
 double g_speed_sp;
 double g_pitch_sp;
 double g_hdg_sp;
@@ -66,17 +79,133 @@ const int8_t led_status = 1;
 const int8_t bat_pin = A1;
 /******************************************************************************/
 
+/******************************* ROS SETUP ************************************/
+// ros::NodeHandle_<ArduinoHardware, 5, 3, 256, 256> nh;
+ros::NodeHandle nh;
+
+robotball_msgs::Odometry odom_msg;
+ros::Publisher odom_pub("odom", &odom_msg);
+
+robotball_msgs::IMU imu_msg;
+ros::Publisher imu_pub("imu", &imu_msg);
+
+robotball_msgs::Status status_msg;
+ros::Publisher status_pub("status", &status_msg);
+
+robotball_msgs::Debug debug_msg;
+ros::Publisher debug_pub("debug", &debug_msg);
+
+void cmdVelCb (const geometry_msgs::Vector3& cmd_vel) {
+	// Speed controller is active. Joystick commands the desired speed.
+	if (PID_speed.GetMode())
+	{
+		g_speed_sp = cmd_vel.x * g_speed_scale;
+		g_hdg_sp = cmd_vel.y;
+	}
+	else if (PID_pitch.GetMode())
+	{
+		g_pitch_sp = cmd_vel.x * g_pitch_scale * -1;
+		g_hdg_sp = cmd_vel.y;
+	}
+	else if (PID_hdg.GetMode())
+	{
+		g_pitch_sp = cmd_vel.x; // Not really needed, just to move the serial buffer.
+		g_hdg_sp = cmd_vel.y;
+	}
+	else
+	{
+		g_vel_lin = cmd_vel.x * g_default_scale;
+		g_vel_rot = cmd_vel.y / (PI);
+	}
+}
+ros::Subscriber<geometry_msgs::Vector3> cmd_sub("cmd_vel", &cmdVelCb);
+
+void dynReconfCb (const robotball_msgs::DynReconf& msg) {
+	PID_pitch.SetMode(msg.pitch.enabled);
+	PID_speed.SetMode(msg.speed.enabled);
+	PID_hdg.SetMode(msg.hdg.enabled);
+
+	PID_pitch.SetTunings(msg.pitch.P, msg.pitch.I, msg.pitch.D);
+	PID_speed.SetTunings(msg.speed.P, msg.speed.I, msg.speed.D);
+	PID_hdg.SetTunings(msg.hdg.P, msg.hdg.I, msg.hdg.D);
+	nh.loginfo("PID parameters successfully changed.");
+}
+ros::Subscriber<robotball_msgs::DynReconf> reconf_sub("dyn_reconf", &dynReconfCb);
+
+
+Timer<4, millis> timer;
+
+void publish_imu() {
+	imu_pub.publish(&imu_msg);
+}
+
+void publish_odom() {
+	odom_pub.publish(&odom_msg);
+}
+
+void publish_status() {
+	status_pub.publish(&status_msg);
+}
+
+void publih_debug() {
+	debug_pub.publish(&debug_msg);
+}
+/******************************************************************************/
+
 void setup ()
 {
-	Serial.begin(115200);
-	while (!Serial) yield();
-
+  /* Set up pins. */
 	pinMode(LED_BUILTIN, OUTPUT);
 	pinMode(led_pin, OUTPUT);
 
-	/* Set up the BNO055 IMU. */
-	setup_test_BNO055();
+	/* Set up ROS. */
+  nh.getHardware()->setBaud(460800);
+	nh.initNode();
+  nh.advertise(imu_pub);
+  nh.advertise(odom_pub);
+  nh.advertise(debug_pub);
+  nh.advertise(status_pub);
+  nh.subscribe(cmd_sub);
+  nh.spinOnce();
 
+  timer.every(1.0 / 1  * 1000, publish_status);
+  timer.every(1.0 / 10 * 1000, publish_odom);
+  timer.every(1.0 / 10 * 1000, publih_debug);
+  timer.every(1.0 / 50 * 1000, publish_imu);
+
+	/* Initialize BNO055 IMU. */
+	if(!bno.begin())
+	{
+		// There was a problem detecting the BNO055.
+		while(1) {
+			digitalWrite(led_pin, LOW);
+			delay(500);
+			digitalWrite(led_pin, HIGH);
+			delay(500);
+		}
+	}
+	delay(1000);
+	bno.setExtCrystalUse(true);
+
+	/* Check the calibration status of the IMU. */
+	uint8_t system, gyro, accel, mag;
+	system = gyro = accel = mag = 0;
+	// The data should be ignored until the system calibration is > 0.
+	int valid_count = 0;
+	while (valid_count < 20)
+	{
+		bno.getCalibration(&system, &gyro, &accel, &mag);
+		valid_count = valid_count * (system > 0) + 1;
+		status_msg.calibration = 10000 + system * 1000 + gyro * 100 + accel * 10 + mag;
+		status_pub.publish(&status_msg);
+		nh.spinOnce();
+		delay(50);
+	}
+	status_msg.calibration = 90000 + system * 1000 + gyro * 100 + accel * 10 + mag;
+	status_pub.publish(&status_msg);
+	nh.spinOnce();
+	digitalWrite(led_pin, HIGH);
+	
 	/* Turn on or off individual PIDs. */
 	// Pitch must be enabled if speed is enabled.
   PID_pitch.SetMode(MANUAL);
@@ -93,17 +222,30 @@ void setup ()
 
 
 void loop() {
-	double ignore;
 
-	Serial.print("STRT! ");
-
-	/* Read input on Serial */
-	if (Serial.available() > 0) {
-		read_and_set();
-	}
+	nh.spinOnce();
 
 	/* Get the latest orientation data. */
-	AHRS_update(&g_roll, &g_pitch, &g_hdg);
+	imu::Quaternion quat = bno.getQuat();
+	// IMU is mounted differently from its default orientation. In order to
+	// avoid singularities at certain angles, we need to rotate the measured
+	// quaternion before converting it to euler. We do that by multiplying it
+	// with the magic quaternion below.
+	quat = quat * rot_offset;
+	// Axis on the IMU are wierdly flipped so we also need to flip x and z
+	// axis for rotation. When all values are zero, the robot is in neutral
+	// orientation and pointing towards east. */
+	imu::Vector<3> quat_euler = quat.toEuler();
+	g_roll = quat_euler.z();
+	g_pitch = quat_euler.y();
+	g_hdg = quat_euler.x();
+
+	imu_msg.orientation.x = quat.x();
+	imu_msg.orientation.y = quat.y();
+	imu_msg.orientation.z = quat.z();
+	imu_msg.orientation.w = quat.w();
+	/* ---------- */
+
 
 	/* Handle yaw wrapping */
 	if (abs(g_hdg - g_hdg_sp) > PI)
@@ -121,22 +263,28 @@ void loop() {
 	// }
 
 	/* Get the latest odometry data. */
+	double angular;
+	float pos_x, pos_y, pos_theta;
 	odometry.update();
-	odometry.getRobotVel(&g_speed, &ignore);
+	odometry.getRobotVel(&g_speed, &angular);
+	odometry.getRobotPos(&pos_x, &pos_y, &pos_theta);
+
+	odom_msg.pose.x = pos_x;
+	odom_msg.pose.y = pos_y;
+	odom_msg.pose.theta = pos_theta;
+	odom_msg.velocity.x = g_speed;
+	odom_msg.velocity.z = angular;
+	/* ---------- */
 
 	/* Compute all PID outputs */
 	PID_speed.Compute();
 	PID_pitch.Compute();
 	PID_hdg.Compute();
 
-	debug("S_S", g_speed_sp);
-	debug("S", g_speed);
-	debug("H_S", g_hdg_sp);
-	debug("H", g_hdg);
-	debug("P_S", g_pitch_sp);
-	debug("P", g_pitch);
-	debug("R", g_roll);
-
+	debug_msg.speed.output = g_pitch_sp;
+	debug_msg.pitch.output = g_vel_lin;
+	debug_msg.hdg.output   = g_vel_rot;
+	/* ---------- */
 
 	/* Control the motors. */
 	double vel_left = 0;
@@ -145,110 +293,25 @@ void loop() {
 	vel_left = g_vel_lin - g_vel_rot;
 	vel_right = g_vel_lin + g_vel_rot;
 
-	debug("LIN", g_vel_lin);
-	debug("ROT", g_vel_rot);
-
 	double scale_factor = 1.0;
 
 	if (abs(vel_left) > 1 || abs(vel_right) > 1)
 	{
-	  	double x = max(abs(vel_left), abs(vel_right));
-	  	scale_factor = 1.0 / x;
+  	double x = max(abs(vel_left), abs(vel_right));
+  	scale_factor = 1.0 / x;
 	}
 
 	vel_left = round(vel_left * scale_factor * 255);
 	vel_right = round(vel_right * scale_factor * 255);
 
-	// debug("vL", vel_left);
-	// debug("vR", vel_right);
-	debug("SPD", g_speed);
-
-	int bat_level = analogRead(bat_pin);
-	debug("BAT", bat_level);
-
-	Serial.println();
-
-	// Set the motor speeds.
 	motor_right.setSpeed(vel_right);
-	motor_left.setSpeed(-vel_left);  // "-" because the motor is mounted differently
-	/* --------------- */
-}
+	motor_left.setSpeed(-vel_left);  // "-" because the motor is mounted differently	
+	/* ---------- */
 
-double read_double(char ends) {
-  double n = 0;
-  int dec = 1;
-  double d;
-  bool pos = true;
-  int8_t neg = 1;
+	/* Get the robot status */
+	status_msg.battery = analogRead(bat_pin);
+	/* ---------- */
 
-  while (true) {
-    if (Serial.available() > 0) {
-      char c = (Serial.read());
-      if (c == ends ) {
-        return n * neg;
-      }
-      else if (c == '-') {
-        neg = -1;
-      }
-      else if (c == '.') {
-        pos = false;
-      } else {
-        d = c - '0';
-        if (pos) {
-          n = n * 10 + d;
-        } else {
-          dec *= 10;
-          n += d / dec;
-        }
-      }
-    }
-  }
-}
-
-void read_and_set() {
-	char c = (Serial.read());
-	if (c == '<')
-	{
-		double Kp_speed, Ki_speed, Kd_speed;
-		double Kp_pitch, Ki_pitch, Kd_pitch;
-		double Kp_hdg, Ki_hdg, Kd_hdg;
-
-		Kp_speed = read_double(';');
-		Ki_speed = read_double(';');
-		Kd_speed = read_double(';');
-		Kp_pitch = read_double(';');
-		Ki_pitch = read_double(';');
-		Kd_pitch = read_double(';');
-		Kp_hdg = read_double(';');
-		Ki_hdg = read_double(';');
-		Kd_hdg = read_double('>');
-
-		PID_pitch.SetTunings(Kp_pitch, Ki_pitch, Kd_pitch);
-		PID_speed.SetTunings(Kp_speed, Ki_speed, Kd_speed);
-		PID_hdg.SetTunings(Kp_hdg, Ki_hdg, Kd_hdg);
-	}
-	else if (c == '[')
-	{
-		// Speed controller is active. Joystick commands the desired speed.
-		if (PID_speed.GetMode())
-		{
-			g_speed_sp = read_double(';') * g_speed_scale;
-			g_hdg_sp = read_double(']');
-		}
-		else if (PID_pitch.GetMode())
-		{
-			g_pitch_sp = read_double(';') * g_pitch_scale * -1;
-			g_hdg_sp = read_double(']');
-		}
-		else if (PID_hdg.GetMode())
-		{
-			g_pitch_sp = read_double(';'); // Not really needed, just to move the serial buffer.
-			g_hdg_sp = read_double(']');
-		}
-		else
-		{
-			g_vel_lin = read_double(';') * g_default_scale;
-			g_vel_rot = read_double(']') / (PI);
-		}
-	}
+	// Publish all ROS messages according to their rates..
+	timer.tick();
 }

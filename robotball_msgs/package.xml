@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>robotball_msgs</name>
+  <version>0.0.1</version>
+  <description>Messages package for the robot ball by LARICS and TU Delft</description>
+
+  <maintainer email="marko.krizmancic@fer.hr">Marko Krizmancic</maintainer>
+
+  <license>MIT</license>
+
+  <author email="marko.krizmancic@fer.hr">Marko Krizmancic</author>
+
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend>
+
+
+  <!-- The export tag contains other, unspecified, tags -->
+  <export>
+    <!-- Other tools can request additional information be placed here -->
+
+  </export>
+</package>
