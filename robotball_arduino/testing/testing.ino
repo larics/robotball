@@ -96,27 +96,22 @@ robotball_msgs::Debug debug_msg;
 ros::Publisher debug_pub("debug", &debug_msg);
 
 void cmdVelCb (const geometry_msgs::Vector3& cmd_vel) {
-	// Speed controller is active. Joystick commands the desired speed.
-	if (PID_speed.GetMode())
-	{
-		g_speed_sp = cmd_vel.x * g_speed_scale;
+	if (PID_hdg.GetMode())
+		// Heading controller is active. Joystick commands the desired heading.
 		g_hdg_sp = cmd_vel.y;
-	}
-	else if (PID_pitch.GetMode())
-	{
-		g_pitch_sp = cmd_vel.x * g_pitch_scale * -1;
-		g_hdg_sp = cmd_vel.y;
-	}
-	else if (PID_hdg.GetMode())
-	{
-		g_pitch_sp = cmd_vel.x; // Not really needed, just to move the serial buffer.
-		g_hdg_sp = cmd_vel.y;
-	}
 	else
-	{
-		g_vel_lin = cmd_vel.x * g_default_scale;
+		// Joystick commands the rotational part of motor mixer directly.
 		g_vel_rot = cmd_vel.y / (PI);
-	}
+
+	if (PID_speed.GetMode())
+		// Speed controller is active. Joystick commands the desired speed.
+		g_speed_sp = cmd_vel.x * g_speed_scale;
+	else if (PID_pitch.GetMode())
+		// Pitch controller is active. Joystick commands the desired pitch.
+		g_pitch_sp = cmd_vel.x * g_pitch_scale * -1;
+	else
+		// Joystick commands the linear part of motor mixer directly.
+		g_vel_lin = cmd_vel.x * g_default_scale;
 }
 ros::Subscriber<geometry_msgs::Vector3> cmd_sub("cmd_vel", &cmdVelCb);
 
@@ -125,10 +120,15 @@ void dynReconfCb (const robotball_msgs::DynReconf& msg) {
 	PID_speed.SetMode(msg.speed.enabled);
 	PID_hdg.SetMode(msg.hdg.enabled);
 
-	PID_pitch.SetTunings(msg.pitch.P, msg.pitch.I, msg.pitch.D);
-	PID_speed.SetTunings(msg.speed.P, msg.speed.I, msg.speed.D);
-	PID_hdg.SetTunings(msg.hdg.P, msg.hdg.I, msg.hdg.D);
-	nh.loginfo("PID parameters successfully changed.");
+	bool success = true;
+	success &= PID_pitch.SetTunings(msg.pitch.P, msg.pitch.I, msg.pitch.D);
+	success &= PID_speed.SetTunings(msg.speed.P, msg.speed.I, msg.speed.D);
+	success &= PID_hdg.SetTunings(msg.hdg.P, msg.hdg.I, msg.hdg.D);
+
+	if (success)
+		nh.loginfo("PID parameters successfully changed.");
+	else
+		nh.logwarn("PID parameters couldn't be changed. They are negative or NaN.");
 }
 ros::Subscriber<robotball_msgs::DynReconf> reconf_sub("dyn_reconf", &dynReconfCb);
 
@@ -166,6 +166,7 @@ void setup ()
   nh.advertise(debug_pub);
   nh.advertise(status_pub);
   nh.subscribe(cmd_sub);
+  nh.subscribe(reconf_sub);
   nh.spinOnce();
 
   timer.every(1.0 / 1  * 1000, publish_status);

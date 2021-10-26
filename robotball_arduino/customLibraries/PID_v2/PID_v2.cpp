@@ -45,45 +45,49 @@ PID::PID(double* Input, double* Output, double* Setpoint,
  **********************************************************************************/
 bool PID::Compute()
 {
-   if(!inAuto) return false;
+  if(!inAuto) return false;
 
-   unsigned long now = millis();
-   if(now - lastTime >= SampleTime)
-   {
-      /*Compute all the working error variables*/
-      double input = *myInput;
-      double error = *mySetpoint - input;
-      if (error > -deadzone && error < deadzone){
-         error = 0;
-      }
+  if (isnan(*myInput) || isnan(*mySetpoint)) return false;
 
-      /*Compute the control values*/
-      double up = kp * error;
-      double ui = ki * error + ui_old;
-      double ud = kd * (error - error_old);
+  unsigned long now = millis();
+  if(now - lastTime >= SampleTime)
+  {
+    lastTime = now;
 
-      double output = up + ui + ud;
-
-      /* Limit the output and integral wind-up*/
-      if (output > outMax)
-      {
-        output = outMax;
-        ui = ui_old;
-      }
-      else if (output < outMin)
-      {
-        output = outMin;
-        ui = ui_old;
-      }
-
-      /*Update the values for next time*/
-      ui_old = ui;
-      error_old = error;
-
-      *myOutput = output;
-      return true;
+    /*Compute all the working error variables*/
+    double input = *myInput;
+    double error = *mySetpoint - input;
+    if (error > -deadzone && error < deadzone){
+       error = 0;
     }
-   else return false;
+
+    /*Compute the control values*/
+    double up = kp * error;
+    double ui = ki * error + ui_old;
+    double ud = kd * (error - error_old);
+
+    double output = up + ui + ud;
+
+    /* Limit the output and integral wind-up*/
+    if (output > outMax)
+    {
+      output = outMax;
+      ui = ui_old;
+    }
+    else if (output < outMin)
+    {
+      output = outMin;
+      ui = ui_old;
+    }
+
+    /*Update the values for next time*/
+    ui_old = ui;
+    error_old = error;
+
+    *myOutput = output;
+    return true;
+  }
+  else return false;
 }
 
 /* SetTunings(...)*************************************************************
@@ -91,9 +95,10 @@ bool PID::Compute()
  * it's called automatically from the constructor, but tunings can also
  * be adjusted on the fly during normal operation
  ******************************************************************************/
-void PID::SetTunings(double Kp, double Ki, double Kd)
+bool PID::SetTunings(double Kp, double Ki, double Kd)
 {
-  if (Kp<0 || Ki<0 || Kd<0) return;
+  if (Kp<0 || Ki<0 || Kd<0) return false;
+  if (isnan(Kp) || isnan(Ki) || isnan(Kd)) return false;
 
   dispKp = Kp; dispKi = Ki; dispKd = Kd;
 
@@ -109,8 +114,10 @@ void PID::SetTunings(double Kp, double Ki, double Kd)
       kd = (0 - kd);
    }
 
-   if (ki == 0)
+  if (ki == 0)
     ui_old = 0;
+    
+  return true;
 }
 
 /* SetOutputLimits(...)****************************************************

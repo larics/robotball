@@ -34,7 +34,7 @@ class PID
 
 
     //available but not commonly used functions ********************************************************
-    void SetTunings(double, double,       // * While most users will set the tunings once in the 
+    bool SetTunings(double, double,       // * While most users will set the tunings once in the 
                     double);              //   constructor, this function gives the user the option
                                           //   of changing tunings during runtime for Adaptive control           
 
