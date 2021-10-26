@@ -11,6 +11,8 @@
 #include <utility/imumaths.h>
 #include <arduino-timer.h>
 #include <CytronMotorDriver.h>
+#include <math.h>
+
 #include <PID_v2.h>
 #include <Odometry.h>
 
@@ -23,8 +25,8 @@
 // Script name: PWM_PWM_DUAL.ino
 
 // Configure the motor driver.
-CytronMD motor_left(PWM_PWM, 5, 6);     // PWM 1A = Pin 5, PWM 1B = Pin 6.   << LEFT 
-CytronMD motor_right(PWM_PWM, 9, 10);   // PWM 2A = Pin 9, PWM 2B = Pin 10.  << RIGHT 
+CytronMD motor_left(PWM_PWM, 9, 10);   // PWM 1A = Pin 9, PWM 1B = Pin 10. << LEFT 
+CytronMD motor_right(PWM_PWM, 5, 6);   // PWM 2A = Pin 5, PWM 2B = Pin 6.  << RIGHT 
 /******************************************************************************/
 
 /************************** ODOMETRY-RELATED SETUP ****************************/
@@ -282,9 +284,15 @@ void loop() {
 	PID_pitch.Compute();
 	PID_hdg.Compute();
 
-	debug_msg.speed.output = g_pitch_sp;
-	debug_msg.pitch.output = g_vel_lin;
-	debug_msg.hdg.output   = g_vel_rot;
+	debug_msg.speed.setpoint = g_speed_sp;
+	debug_msg.speed.measured = g_speed;
+	debug_msg.speed.output   = g_pitch_sp;
+	debug_msg.pitch.setpoint = g_pitch_sp;
+	debug_msg.pitch.measured = g_pitch;
+	debug_msg.pitch.output   = g_vel_lin;
+	debug_msg.hdg.setpoint   = g_hdg_sp;
+	debug_msg.hdg.measured   = g_hdg;
+	debug_msg.hdg.output     = g_vel_rot;
 	/* ---------- */
 
 	/* Control the motors. */
@@ -294,23 +302,26 @@ void loop() {
 	vel_left = g_vel_lin - g_vel_rot;
 	vel_right = g_vel_lin + g_vel_rot;
 
-	double scale_factor = 1.0;
+	debug_msg.vel.left = vel_left;
+	debug_msg.vel.right = vel_right;
 
-	if (abs(vel_left) > 1 || abs(vel_right) > 1)
+	double scale_factor = 1.0;
+	double abs_left = fabs(vel_left);
+	double abs_right = fabs(vel_right);
+	if ((abs_left > 1) || (abs_right > 1))
 	{
-  	double x = max(abs(vel_left), abs(vel_right));
+  	double x = max(abs_left, abs_right);
   	scale_factor = 1.0 / x;
 	}
 
 	vel_left = round(vel_left * scale_factor * 255);
 	vel_right = round(vel_right * scale_factor * 255);
 
-	motor_right.setSpeed(vel_right);
-	motor_left.setSpeed(-vel_left);  // "-" because the motor is mounted differently	
-	/* ---------- */
+	motor_right.setSpeed(-vel_right);  // "-" because the motor is mounted differently
+	motor_left.setSpeed(vel_left);  
 
-	/* Get the robot status */
-	status_msg.battery = analogRead(bat_pin);
+	debug_msg.motor.left  = vel_left;
+	debug_msg.motor.right = vel_right;
 	/* ---------- */
 
 	// Publish all ROS messages according to their rates..

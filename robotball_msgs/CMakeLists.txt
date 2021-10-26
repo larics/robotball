@@ -53,6 +53,7 @@ add_message_files(
   PIDConfig.msg
   DynReconf.msg
   Debug.msg
+  LeftRight.msg
   Status.msg
   Odometry.msg
 )
