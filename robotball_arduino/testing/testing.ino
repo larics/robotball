@@ -177,14 +177,17 @@ void setup ()
   timer.every(1.0 / 50 * 1000, publish_imu);
 
 	/* Initialize BNO055 IMU. */
-	if(!bno.begin())
+	while(!bno.begin())
 	{
 		// There was a problem detecting the BNO055.
-		while(1) {
-			digitalWrite(led_pin, LOW);
-			delay(500);
+		for(int i=0; i<5; i++) {
 			digitalWrite(led_pin, HIGH);
 			delay(500);
+			digitalWrite(led_pin, LOW);
+			delay(500);
+			status_msg.calibration = 10000;
+			status_pub.publish(&status_msg);
+			nh.spinOnce();
 		}
 	}
 	delay(1000);
