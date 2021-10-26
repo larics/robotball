@@ -41,7 +41,7 @@ class Driver(object):
         # Joystick control
         rospy.Subscriber("joy", Joy, self.joy_callback, queue_size=1)
 
-        rate = rospy.Rate(50)
+        rate = rospy.Rate(10)
         while not rospy.is_shutdown():
             self.cmd_vel_pub.publish(self.cmd_vel)
             rate.sleep()

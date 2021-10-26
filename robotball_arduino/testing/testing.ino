@@ -146,6 +146,9 @@ void publish_odom() {
 }
 
 void publish_status() {
+	/* Get the robot status */
+	// status_msg.battery = analogRead(bat_pin);
+
 	status_pub.publish(&status_msg);
 }
 
@@ -174,7 +177,7 @@ void setup ()
   timer.every(1.0 / 1  * 1000, publish_status);
   timer.every(1.0 / 10 * 1000, publish_odom);
   timer.every(1.0 / 10 * 1000, publih_debug);
-  timer.every(1.0 / 50 * 1000, publish_imu);
+  timer.every(1.0 / 10 * 1000, publish_imu);
 
 	/* Initialize BNO055 IMU. */
 	while(!bno.begin())
