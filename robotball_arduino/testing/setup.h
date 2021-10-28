@@ -11,6 +11,10 @@ const float g_max_motor_rpm = 75;
 const int g_encoder_rate = 1680;	// Number of signals per rotation.
 									// Encoder's resolution is 420, but we use 4x counting.
 
+const int8_t l_motor_sign = 1;	// Set to -1 if motor is mounted in reverse.
+const int8_t r_motor_sign = -1;
+
+
 const float g_default_scale = 1;
 const float g_pitch_scale = PI / 4;
 const float g_speed_scale = g_max_motor_rpm * TWO_PI / 60 * ((g_lwr + g_rwr) / 2) * (g_shell_radius / g_contact_radius);

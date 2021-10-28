@@ -61,6 +61,8 @@ class DiffDriveOdom
         float rR_;
         float b_;
         float transmission_;
+        int8_t lDir_;
+        int8_t rDir_;
 
 };
 

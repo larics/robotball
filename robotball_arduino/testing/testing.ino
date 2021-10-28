@@ -26,7 +26,7 @@
 
 // Configure the motor driver.
 CytronMD motor_left(PWM_PWM, 9, 10);   // PWM 1A = Pin 9, PWM 1B = Pin 10. << LEFT 
-CytronMD motor_right(PWM_PWM, 5, 6);   // PWM 2A = Pin 5, PWM 2B = Pin 6.  << RIGHT 
+CytronMD motor_right(PWM_PWM, 5, 6);   // PWM 2A = Pin 5, PWM 2B = Pin 6.  << RIGHT
 /******************************************************************************/
 
 /************************** ODOMETRY-RELATED SETUP ****************************/
@@ -34,8 +34,8 @@ CytronMD motor_right(PWM_PWM, 5, 6);   // PWM 2A = Pin 5, PWM 2B = Pin 6.  << RI
 // Right Encoder 1 = Pin 8, Right Encoder 2 = Pin 11
 const EncoderPins pins{4, 7, 8, 11};
 const DiffDriveParams params{
-    .lwr = g_lwr,
-    .rwr = g_rwr,
+    .lwr = g_lwr * l_motor_sign,
+    .rwr = g_rwr * r_motor_sign,
     .ws = g_ws,
     .sr = g_shell_radius,
     .cr = g_contact_radius
@@ -147,7 +147,7 @@ void publish_odom() {
 
 void publish_status() {
 	/* Get the robot status */
-	// status_msg.battery = analogRead(bat_pin);
+	status_msg.battery = analogRead(bat_pin);
 
 	status_pub.publish(&status_msg);
 }
@@ -174,7 +174,7 @@ void setup ()
   nh.subscribe(reconf_sub);
   nh.spinOnce();
 
-  timer.every(1.0 / 1  * 1000, publish_status);
+  //timer.every(1.0 / 1  * 1000, publish_status);
   timer.every(1.0 / 10 * 1000, publish_odom);
   timer.every(1.0 / 10 * 1000, publih_debug);
   timer.every(1.0 / 10 * 1000, publish_imu);
@@ -323,8 +323,8 @@ void loop() {
 	vel_left = round(vel_left * scale_factor * 255);
 	vel_right = round(vel_right * scale_factor * 255);
 
-	motor_right.setSpeed(-vel_right);  // "-" because the motor is mounted differently
-	motor_left.setSpeed(vel_left);  
+	motor_right.setSpeed(r_motor_sign * vel_right);
+	motor_left.setSpeed(l_motor_sign * vel_left);  
 
 	debug_msg.motor.left  = vel_left;
 	debug_msg.motor.right = vel_right;

@@ -9,10 +9,12 @@ DiffDriveOdom::DiffDriveOdom(EncoderPins pins, int encoder_rate, DiffDriveParams
 
     // Save the parameters.
     COUNTER_PER_ROTATION_ = encoder_rate;
-    lR_ = params.lwr;
-    rR_ = params.rwr;
+    lR_ = fabs(params.lwr);
+    rR_ = fabs(params.rwr);
     b_ = params.ws;
     transmission_ = params.sr / params.cr;
+    lDir_ = params.lwr < 0 ? -1 : 1;
+    rDir_ = params.rwr < 0 ? -1 : 1;
 
     // Initialize other variables.
     // Last update time and encoder positions
@@ -42,8 +44,8 @@ void DiffDriveOdom::update()
     last_update_ = now;
 
     // Read the encoder offset since last update.
-    int left_pos_delta = -enc_left_->readAndReset();  // - because of the way the motors are mounted.
-    int right_pos_delta = enc_right_->readAndReset();
+    int left_pos_delta = lDir_ * enc_left_->readAndReset();
+    int right_pos_delta = rDir_ * enc_right_->readAndReset();
 
     // Calculate the position of encoders.
     pos_l_ += left_pos_delta / COUNTER_PER_ROTATION_ * TWO_PI;
