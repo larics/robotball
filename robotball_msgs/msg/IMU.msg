@@ -1,1 +1,2 @@
 geometry_msgs/Quaternion orientation
+geometry_msgs/Vector3 euler

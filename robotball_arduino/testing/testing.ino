@@ -215,12 +215,7 @@ void setup ()
 	nh.spinOnce();
 	digitalWrite(led_pin, HIGH);
 	
-	/* Turn on or off individual PIDs. */
-	// Pitch must be enabled if speed is enabled.
-  PID_pitch.SetMode(MANUAL);
-	PID_speed.SetMode(MANUAL);
-	PID_hdg.SetMode(MANUAL);
-
+	/* Set predefined PID parameters. */
 	PID_pitch.SetOutputLimits(-1, 1);
 	PID_speed.SetOutputLimits(-g_pitch_scale, g_pitch_scale);
 	PID_hdg.SetOutputLimits(-1, 1);
@@ -253,6 +248,9 @@ void loop() {
 	imu_msg.orientation.y = quat.y();
 	imu_msg.orientation.z = quat.z();
 	imu_msg.orientation.w = quat.w();
+	imu_msg.euler.x = g_roll;
+	imu_msg.euler.y = g_pitch;
+	imu_msg.euler.z = g_hdg;
 	/* ---------- */
 
 

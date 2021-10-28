@@ -3,6 +3,7 @@
 import math
 import rospy
 
+from std_srvs.srv import Empty
 from sensor_msgs.msg import Joy
 from geometry_msgs.msg import Vector3
 from robotball_msgs.msg import Odometry, IMU, Status, Debug, DynReconf
@@ -27,7 +28,7 @@ class Driver(object):
         # Publishers
         self.cmd_vel = Vector3()
         self.cmd_vel_pub = rospy.Publisher('cmd_vel', Vector3, queue_size=1)
-        self.dyn_reconf_pub = rospy.Publisher('dyn_reconf', DynReconf, queue_size=1)
+        self.dyn_reconf_pub = rospy.Publisher('dyn_reconf', DynReconf, queue_size=1, latch=True)
 
         # Subscribers
         # rospy.Subscriber('odom', Odometry, self.odom_cb, queue_size=1)
@@ -79,6 +80,16 @@ class Driver(object):
                 direction = 0
 
         self.cmd_vel = Vector3(magnitude, direction, 0)
+
+
+        if data.buttons[8] and data.buttons[9]:
+            rospy.wait_for_service('/serial_node/reset_arduino')
+            reset = rospy.ServiceProxy('/serial_node/reset_arduino', Empty)
+            try:
+                rospy.logwarn("Resetting arduino now!")
+                resp = reset()
+            except rospy.ServiceException as exc:
+                rospy.logerr("Service did not process request: %s", exc)
 
     def reconfigure_callback(self, config, level):
         rospy.loginfo("""Reconfigure Request:
