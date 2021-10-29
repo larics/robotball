@@ -159,6 +159,11 @@ void PID::SetDeadzone(double value)
 void PID::SetMode(byte Mode)
 {
     bool newAuto = (Mode == AUTOMATIC);
+    if(newAuto && !inAuto)
+    {  /*we just went from manual to auto*/
+      ui_old = 0;
+      error_old = 0;
+    }
     inAuto = newAuto;
 }
 

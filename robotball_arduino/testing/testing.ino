@@ -59,16 +59,24 @@ double g_pitch;
 double g_roll;
 double g_hdg;
 
+double g_speed_out;
+double g_pitch_out;
+
 double g_vel_lin;
 double g_vel_rot;
 
 unsigned long last_cmd_vel;  // Last time velocity command was received
 
+#define MODE_STABLE 0
+#define MODE_DRIVE 1
+int mode = MODE_STABLE;
+bool pid_enabled = false;
+
 // v_ref -> pitch
-PID PID_speed(&g_speed, &g_pitch_sp, &g_speed_sp, 0, 0, 0, 100, REVERSE);  // In, Out, Sp, Kp, Ki, Kd (2, 5, 1), Ts
+PID PID_speed(&g_speed, &g_speed_out, &g_speed_sp, 0, 0, 0, 100, DIRECT);  // In, Out, Sp, Kp, Ki, Kd (2, 5, 1), Ts
 
 // pitch -> motor_speed (linear.x)
-PID PID_pitch(&g_pitch, &g_vel_lin, &g_pitch_sp, 0, 0, 0, 20, REVERSE); // In, Out, Sp, Kp, Ki, Kd (0.3/1.57, 0, 0), Ts
+PID PID_pitch(&g_pitch, &g_pitch_out, &g_pitch_sp, 0, 0, 0, 50, REVERSE); // In, Out, Sp, Kp, Ki, Kd (0.3/1.57, 0, 0), Ts
 
 // hdg_ref -> motor_speed (angular.z)
 PID PID_hdg(&g_hdg, &g_vel_rot, &g_hdg_sp, 0, 0, 0, 50, DIRECT);  // In, Out, Sp, Kp, Ki, Kd (2, 5, 1), Ts
@@ -105,12 +113,9 @@ void cmdVelCb (const geometry_msgs::Vector3& cmd_vel) {
 		// Joystick commands the rotational part of motor mixer directly.
 		g_vel_rot = cmd_vel.y / (PI);
 
-	if (PID_speed.GetMode())
+	if (pid_enabled)
 		// Speed controller is active. Joystick commands the desired speed.
 		g_speed_sp = cmd_vel.x * g_speed_scale;
-	else if (PID_pitch.GetMode())
-		// Pitch controller is active. Joystick commands the desired pitch.
-		g_pitch_sp = cmd_vel.x * g_pitch_scale * -1;
 	else
 		// Joystick commands the linear part of motor mixer directly.
 		g_vel_lin = cmd_vel.x * g_default_scale;
@@ -118,8 +123,20 @@ void cmdVelCb (const geometry_msgs::Vector3& cmd_vel) {
 ros::Subscriber<geometry_msgs::Vector3> cmd_sub("cmd_vel", &cmdVelCb);
 
 void dynReconfCb (const robotball_msgs::DynReconf& msg) {
-	PID_pitch.SetMode(msg.pitch.enabled);
-	PID_speed.SetMode(msg.speed.enabled);
+	if (!msg.speed.enabled)
+	{
+		PID_pitch.SetMode(MANUAL);
+		PID_speed.SetMode(MANUAL);
+		pid_enabled = false;
+		mode = MODE_STABLE;
+	}
+	else if (!pid_enabled)
+	{
+		PID_speed.SetMode(MANUAL);
+		PID_pitch.SetMode(AUTOMATIC);
+		pid_enabled = true;
+		mode = MODE_STABLE;
+	}
 	PID_hdg.SetMode(msg.hdg.enabled);
 
 	bool success = true;
@@ -276,6 +293,17 @@ void loop() {
 	odometry.getRobotVel(&g_speed, &angular);
 	odometry.getRobotPos(&pos_x, &pos_y, &pos_theta);
 
+	float left, right;
+	odometry.getEncoderShift(&left, &right);
+	debug_msg.odom.shift.left = left;
+	debug_msg.odom.shift.right = right;
+	odometry.getWheelPos(&left, &right);
+	debug_msg.odom.pos.left = left;
+	debug_msg.odom.pos.right = right;
+	odometry.getWheelOmega(&left, &right);
+	debug_msg.odom.omega.left = left;
+	debug_msg.odom.omega.right = right;
+
 	odom_msg.pose.x = pos_x;
 	odom_msg.pose.y = pos_y;
 	odom_msg.pose.theta = pos_theta;
@@ -284,19 +312,53 @@ void loop() {
 	/* ---------- */
 
 	/* Compute all PID outputs */
-	PID_speed.Compute();
-	PID_pitch.Compute();
 	PID_hdg.Compute();
+	
+	if (pid_enabled)
+	{
+		if (mode == MODE_STABLE)
+		{
+			if (g_speed_sp != 0) 
+			{
+				mode = MODE_DRIVE;
+				PID_speed.SetMode(AUTOMATIC);
+				PID_pitch.SetMode(MANUAL);
+			}
+		}
+		else // mode == MODE_DRIVE
+		{
+			if (g_speed_sp == 0)
+			{
+				if (g_speed < 0.05)
+				{
+					mode = MODE_STABLE;
+					PID_speed.SetMode(MANUAL);
+					PID_pitch.SetMode(AUTOMATIC);
+				}
+			}
+		}
+	}
+	if (mode == MODE_DRIVE && pid_enabled)
+	{
+		PID_speed.Compute();
+		g_vel_lin = g_speed_out;
+	}
+	else if (mode == MODE_STABLE && pid_enabled)
+	{
+		PID_pitch.Compute();
+		g_vel_lin = g_pitch_out;
+	}
 
 	debug_msg.speed.setpoint = g_speed_sp;
 	debug_msg.speed.measured = g_speed;
-	debug_msg.speed.output   = g_pitch_sp;
+	debug_msg.speed.output   = g_speed_out;
 	debug_msg.pitch.setpoint = g_pitch_sp;
 	debug_msg.pitch.measured = g_pitch;
-	debug_msg.pitch.output   = g_vel_lin;
+	debug_msg.pitch.output   = g_pitch_out;
 	debug_msg.hdg.setpoint   = g_hdg_sp;
 	debug_msg.hdg.measured   = g_hdg;
 	debug_msg.hdg.output     = g_vel_rot;
+	debug_msg.mode           = mode;
 	/* ---------- */
 
 	/* Control the motors. */
@@ -306,8 +368,8 @@ void loop() {
 	vel_left = g_vel_lin - g_vel_rot;
 	vel_right = g_vel_lin + g_vel_rot;
 
-	debug_msg.vel.left = vel_left;
-	debug_msg.vel.right = vel_right;
+	debug_msg.vel.left = g_vel_lin;
+	debug_msg.vel.right = g_vel_lin;
 
 	double scale_factor = 1.0;
 	double abs_left = fabs(vel_left);

@@ -56,6 +56,7 @@ add_message_files(
   LeftRight.msg
   Status.msg
   Odometry.msg
+  OdomState.msg
 )
 
 ## Generate services in the 'srv' folder
