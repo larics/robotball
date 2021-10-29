@@ -4,7 +4,7 @@
 
   <node pkg="rosserial_arduino" type="serial_node.py" name="serial_node" output="screen">
     <param name="port" value="$(arg port)"/>
-    <param name="baud" value="460800"/>
+    <param name="baud" value="115200"/>
   </node>
 
   <node pkg="robotball_driver" type="driver.py" name="robotball_driver" output="screen"/>

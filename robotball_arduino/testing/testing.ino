@@ -25,14 +25,14 @@
 // Script name: PWM_PWM_DUAL.ino
 
 // Configure the motor driver.
-CytronMD motor_left(PWM_PWM, 9, 10);   // PWM 1A = Pin 9, PWM 1B = Pin 10. << LEFT 
-CytronMD motor_right(PWM_PWM, 5, 6);   // PWM 2A = Pin 5, PWM 2B = Pin 6.  << RIGHT
+CytronMD motor_left( PWM_PWM, 9, 10);   // PWM 1A = Pin 9, PWM 1B = Pin 10. << LEFT 
+CytronMD motor_right(PWM_PWM, 5, 6 );   // PWM 2A = Pin 5, PWM 2B = Pin 6.  << RIGHT
 /******************************************************************************/
 
 /************************** ODOMETRY-RELATED SETUP ****************************/
 // Left  Encoder 1 = Pin 4, Left  Encoder 2 = Pin 7
 // Right Encoder 1 = Pin 8, Right Encoder 2 = Pin 11
-const EncoderPins pins{4, 7, 8, 11};
+const EncoderPins pins{8, 11, 4, 7};
 const DiffDriveParams params{
     .lwr = g_lwr * l_motor_sign,
     .rwr = g_rwr * r_motor_sign,
@@ -164,7 +164,7 @@ void setup ()
 	pinMode(led_pin, OUTPUT);
 
 	/* Set up ROS. */
-  nh.getHardware()->setBaud(460800);
+  nh.getHardware()->setBaud(115200);
 	nh.initNode();
   nh.advertise(imu_pub);
   nh.advertise(odom_pub);
@@ -217,7 +217,7 @@ void setup ()
 	
 	/* Set predefined PID parameters. */
 	PID_pitch.SetOutputLimits(-1, 1);
-	PID_speed.SetOutputLimits(-g_pitch_scale, g_pitch_scale);
+	PID_speed.SetOutputLimits(-1, 1);
 	PID_hdg.SetOutputLimits(-1, 1);
 
 	PID_pitch.SetDeadzone(0);
