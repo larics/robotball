@@ -9,6 +9,7 @@ from geometry_msgs.msg import Vector3
 from robotball_msgs.msg import Odometry, IMU, Status, Debug, DynReconf
 
 from dynamic_reconfigure.server import Server
+from dynamic_reconfigure.client import Client
 from robotball_driver.cfg import PIDConfig
 
 
@@ -23,6 +24,7 @@ def wrap_pi_pi(x):
 class Driver(object):
     def __init__(self):
         self.first_pass = True
+        self.latest_config = None
         rospy.sleep(1)
 
         # Publishers
@@ -37,7 +39,8 @@ class Driver(object):
         # rospy.Subscriber('debug', Debug, self.debug_cb, queue_size=1)
 
         # Dynamic reconfigure server for PID tuning
-        self.srv = Server(PIDConfig, self.reconfigure_callback)
+        self.server = Server(PIDConfig, self.reconfigure_callback)
+        self.client = Client('robotball_driver', timeout=2.0)
 
         # Joystick control
         rospy.Subscriber("joy", Joy, self.joy_callback, queue_size=1)
@@ -61,16 +64,20 @@ class Driver(object):
     def joy_callback(self, data):
         """Receive inputs from joystick."""
 
+        # D-pad for step speed inputs.
         if data.axes[5] == 1:
             magnitude = 30 / 45
         elif data.axes[5] == -1:
             magnitude = -30 / 45
+        # Left stick for gradual speed inputs.
         else:
             magnitude = data.axes[1]
 
+        # Right stick for gradual direction inputs.
         if data.axes[2] != 0 or data.axes[3] != 0:
             direction = wrap_pi_pi(math.atan2(data.axes[3], -data.axes[2]) - math.pi / 2)
             self.last_direction = direction
+        # D-pad for step direction inputs.
         else:
             if data.axes[4] == 1:
                 direction = math.pi / 2
@@ -81,7 +88,14 @@ class Driver(object):
 
         self.cmd_vel = Vector3(magnitude, direction, 0)
 
+        # Enable/disable heading controller.
+        if data.buttons[4]:
+            self.client.update_configuration({"hdg_enabled": not self.latest_config.hdg.enabled})
+        # Enable/disable velocity controller.
+        if data.buttons[5]:
+            self.client.update_configuration({"vel_enabled": not self.latest_config.speed.enabled})
 
+        # Press back and start simultaneously to reset the Arduino.
         if data.buttons[8] and data.buttons[9]:
             rospy.wait_for_service('/serial_node/reset_arduino')
             reset = rospy.ServiceProxy('/serial_node/reset_arduino', Empty)
@@ -123,6 +137,7 @@ class Driver(object):
         msg.hdg.I = config['hdg_I']
         msg.hdg.D = config['hdg_D']
         self.dyn_reconf_pub.publish(msg)
+        self.latest_config = msg
 
         # Store PID values
         if self.first_pass:
@@ -133,7 +148,7 @@ class Driver(object):
 
 
 if __name__ == "__main__":
-    rospy.init_node("PID_tuning", anonymous=False)
+    rospy.init_node("driver", anonymous=False)
 
     try:
         node = Driver()
