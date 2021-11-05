@@ -117,7 +117,7 @@ void cmdVelCb (const geometry_msgs::Vector3& cmd_vel) {
 		g_speed_sp = cmd_vel.x * g_speed_scale;
 	else
 		// Joystick commands the linear part of motor mixer directly.
-		g_vel_lin = cmd_vel.x * g_default_scale;
+		g_vel_lin = cmd_vel.x * 1;
 }
 ros::Subscriber<geometry_msgs::Vector3> cmd_sub("cmd_vel", &cmdVelCb);
 
@@ -270,20 +270,19 @@ void loop() {
 	/* ---------- */
 
 
-	/* Handle yaw wrapping */
+	/* Handle yaw wrapping. */
 	if (abs(g_hdg - g_hdg_sp) > PI)
 	{
 		if (g_hdg > 0) g_hdg_sp += 2 * PI;
 		else g_hdg_sp -= 2 * PI;
 	}
 
-	/* Limit the pitch setpoint in large turns to avoid excessive rolling */
-	// if (abs(g_hdg - g_hdg_sp) > PI / 3)
-	// {
-	// 	if (g_pitch_sp > PI / 12) {
-	//   		g_pitch_sp = PI / 12;
-	// 	}
-	// }
+	/* Limit the speed setpoint in large turns to avoid excessive rolling. */
+	float hdg_err = fabs(g_hdg - g_hdg_sp);
+	float limit_speed_sp = fmap(hdg_err, 0, PI, g_speed_scale, 0);
+	g_speed_sp = constrain(g_speed_sp, -limit_speed_sp, limit_speed_sp);
+	/* ---------- */
+
 
 	/* Get the latest odometry data. */
 	double angular;
