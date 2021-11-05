@@ -92,7 +92,9 @@ class Driver(object):
             else:
                 direction = 0
 
-        self.cmd_vel = Vector3(magnitude, direction, 0)
+        # Package the commanded velocity message.
+        # Blue "X" button: Reset odometry.
+        self.cmd_vel = Vector3(magnitude, direction, data.buttons[0])
 
         # "L1" button: Enable/disable heading controller.
         if data.buttons[4]:

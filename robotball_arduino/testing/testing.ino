@@ -120,6 +120,9 @@ void cmdVelCb (const geometry_msgs::Vector3& cmd_vel) {
 	else
 		// Joystick commands the linear part of motor mixer directly.
 		g_vel_lin = cmd_vel.x * 1;
+
+	if (cmd_vel.z == 1)
+		odometry.reset();
 }
 ros::Subscriber<geometry_msgs::Vector3> cmd_sub("cmd_vel", &cmdVelCb);
 
