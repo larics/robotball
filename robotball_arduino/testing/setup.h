@@ -7,7 +7,7 @@ const float g_ws  = 0.323;				// Wheel separation (m) == 32.3 cm
 const float g_shell_radius = 0.1775;	// Outer shell radius (m) == 17.75 cm
 const float g_contact_radius = 0.0666;	// Radius of contact point between wheels and inner shell (m) == 6.66 cm
 
-const float g_max_motor_rpm = 90;
+const float g_max_motor_rpm = 75;
 const int g_encoder_rate = 1680;	// Number of signals per rotation.
 									// Encoder's resolution is 420, but we use 4x counting.
 

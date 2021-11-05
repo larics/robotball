@@ -46,7 +46,6 @@ DiffDriveOdom odometry(pins, g_encoder_rate, params);
 /**************************** IMU-RELATED SETUP *******************************/
 Adafruit_BNO055 bno = Adafruit_BNO055(-1, 0x28);
 const imu::Quaternion rot_offset(0.5, -0.5, 0.5, 0.5);
-
 /******************************************************************************/
 
 /************************* CONTROL-RELATED SETUP ******************************/
@@ -73,10 +72,10 @@ int mode = MODE_STABLE;
 bool pid_enabled = false;
 
 // v_ref -> pitch
-PID PID_speed(&g_speed, &g_speed_out, &g_speed_sp, 0, 0, 0, 100, DIRECT);  // In, Out, Sp, Kp, Ki, Kd (2, 5, 1), Ts
+PID PID_speed(&g_speed, &g_vel_lin, &g_speed_sp, 0, 0, 0, 100, DIRECT);  // In, Out, Sp, Kp, Ki, Kd (2, 5, 1), Ts
 
 // pitch -> motor_speed (linear.x)
-PID PID_pitch(&g_pitch, &g_pitch_out, &g_pitch_sp, 0, 0, 0, 50, REVERSE); // In, Out, Sp, Kp, Ki, Kd (0.3/1.57, 0, 0), Ts
+PID PID_pitch(&g_pitch, &g_vel_lin, &g_pitch_sp, 0, 0, 0, 50, REVERSE); // In, Out, Sp, Kp, Ki, Kd (0.3/1.57, 0, 0), Ts
 
 // hdg_ref -> motor_speed (angular.z)
 PID PID_hdg(&g_hdg, &g_vel_rot, &g_hdg_sp, 0, 0, 0, 50, DIRECT);  // In, Out, Sp, Kp, Ki, Kd (2, 5, 1), Ts
@@ -312,8 +311,7 @@ void loop() {
 	/* ---------- */
 
 	/* Compute all PID outputs */
-	PID_hdg.Compute();
-	
+	// Select the current mode (pitch controller or speed controller active).
 	if (pid_enabled)
 	{
 		if (mode == MODE_STABLE)
@@ -338,23 +336,17 @@ void loop() {
 			}
 		}
 	}
-	if (mode == MODE_DRIVE && pid_enabled)
-	{
-		PID_speed.Compute();
-		g_vel_lin = g_speed_out;
-	}
-	else if (mode == MODE_STABLE && pid_enabled)
-	{
-		PID_pitch.Compute();
-		g_vel_lin = g_pitch_out;
-	}
+	// Compute the outputs. Inactive controllers are automatically skipped.
+	PID_hdg.Compute();
+	PID_speed.Compute();
+	PID_pitch.Compute();
 
 	debug_msg.speed.setpoint = g_speed_sp;
 	debug_msg.speed.measured = g_speed;
-	debug_msg.speed.output   = g_speed_out;
+	debug_msg.speed.output   = g_vel_lin;
 	debug_msg.pitch.setpoint = g_pitch_sp;
 	debug_msg.pitch.measured = g_pitch;
-	debug_msg.pitch.output   = g_pitch_out;
+	debug_msg.pitch.output   = g_vel_lin;
 	debug_msg.hdg.setpoint   = g_hdg_sp;
 	debug_msg.hdg.measured   = g_hdg;
 	debug_msg.hdg.output     = g_vel_rot;
@@ -390,6 +382,6 @@ void loop() {
 	debug_msg.motor.right = vel_right;
 	/* ---------- */
 
-	// Publish all ROS messages according to their rates..
+	// Publish all ROS messages according to their rates.
 	timer.tick();
 }
