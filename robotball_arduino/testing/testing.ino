@@ -15,6 +15,7 @@
 
 #include <PID_v2.h>
 #include <Odometry.h>
+#include <RobotUtilities.h>
 
 #include "setup.h"
 #include "utilities.h"
@@ -57,6 +58,7 @@ double g_speed;
 double g_pitch;
 double g_roll;
 double g_hdg;
+double g_hdg_offset;
 
 double g_speed_out;
 double g_pitch_out;
@@ -142,6 +144,7 @@ void dynReconfCb (const robotball_msgs::DynReconf& msg) {
 	success &= PID_pitch.SetTunings(msg.pitch.P, msg.pitch.I, msg.pitch.D);
 	success &= PID_speed.SetTunings(msg.speed.P, msg.speed.I, msg.speed.D);
 	success &= PID_hdg.SetTunings(msg.hdg.P, msg.hdg.I, msg.hdg.D);
+	g_hdg_offset = msg.hdg_offset * DEG_TO_RAD;
 
 	if (success)
 		nh.loginfo("PID parameters successfully changed.");
@@ -258,7 +261,7 @@ void loop() {
 	imu::Vector<3> quat_euler = quat.toEuler();
 	g_roll = quat_euler.z();
 	g_pitch = quat_euler.y();
-	g_hdg = quat_euler.x();
+	g_hdg = RobotUtils::wrap_pi_pi(quat_euler.x() - PI/2 + g_hdg_offset);
 
 	imu_msg.orientation.x = quat.x();
 	imu_msg.orientation.y = quat.y();

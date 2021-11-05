@@ -1,3 +1,4 @@
 robotball_msgs/PIDConfig speed
 robotball_msgs/PIDConfig pitch
 robotball_msgs/PIDConfig hdg
+float32 hdg_offset

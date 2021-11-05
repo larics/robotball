@@ -24,6 +24,7 @@ def wrap_pi_pi(x):
 class Driver(object):
     def __init__(self):
         self.first_pass = True
+        self.mode_manual = True
         self.latest_config = None
         rospy.sleep(1)
 
@@ -47,7 +48,8 @@ class Driver(object):
 
         rate = rospy.Rate(10)
         while not rospy.is_shutdown():
-            self.cmd_vel_pub.publish(self.cmd_vel)
+            if self.mode_manual:
+                self.cmd_vel_pub.publish(self.cmd_vel)
             rate.sleep()
 
     def status_cb(self, data):
@@ -64,20 +66,24 @@ class Driver(object):
     def joy_callback(self, data):
         """Receive inputs from joystick."""
 
-        # D-pad for step speed inputs.
+        # Green "A" button: Toggle automatic and manual mode.
+        if data.buttons[1]:
+            self.mode_manual = not self.mode_manual
+
+        # D-pad: Step speed inputs.
         if data.axes[5] == 1:
             magnitude = 30 / 45
         elif data.axes[5] == -1:
             magnitude = -30 / 45
-        # Left stick for gradual speed inputs.
+        # Left stick: Gradual speed inputs.
         else:
             magnitude = data.axes[1]
 
-        # Right stick for gradual direction inputs.
+        # Right stick: Gradual direction inputs.
         if data.axes[2] != 0 or data.axes[3] != 0:
             direction = wrap_pi_pi(math.atan2(data.axes[3], -data.axes[2]) - math.pi / 2)
             self.last_direction = direction
-        # D-pad for step direction inputs.
+        # D-pad: Step direction inputs.
         else:
             if data.axes[4] == 1:
                 direction = math.pi / 2
@@ -88,10 +94,10 @@ class Driver(object):
 
         self.cmd_vel = Vector3(magnitude, direction, 0)
 
-        # Enable/disable heading controller.
+        # "L1" button: Enable/disable heading controller.
         if data.buttons[4]:
             self.client.update_configuration({"hdg_enabled": not self.latest_config.hdg.enabled})
-        # Enable/disable velocity controller.
+        # "R1" button: Enable/disable velocity controller.
         if data.buttons[5]:
             self.client.update_configuration({"vel_enabled": not self.latest_config.speed.enabled})
 
@@ -136,6 +142,7 @@ class Driver(object):
         msg.hdg.P = config['hdg_P']
         msg.hdg.I = config['hdg_I']
         msg.hdg.D = config['hdg_D']
+        msg.hdg_offset = config['offset']
         self.dyn_reconf_pub.publish(msg)
         self.latest_config = msg
 
@@ -147,8 +154,13 @@ class Driver(object):
         return config
 
 
+def shutdown_hook():
+    rospy.logwarn("MAKE SURE TO ORIENTATE THE ROBOT UPRIGHT BEFORE SHUTTING DOWN.")
+
+
 if __name__ == "__main__":
     rospy.init_node("driver", anonymous=False)
+    rospy.on_shutdown(shutdown_hook)
 
     try:
         node = Driver()
