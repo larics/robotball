@@ -1,5 +1,5 @@
 #include <ros.h>
-#include <geometry_msgs/Vector3.h>
+#include <geometry_msgs/Twist.h>
 #include <robotball_msgs/Odometry.h>
 #include <robotball_msgs/Status.h>
 #include <robotball_msgs/Debug.h>
@@ -106,25 +106,25 @@ ros::Publisher status_pub("status", &status_msg);
 robotball_msgs::Debug debug_msg;
 ros::Publisher debug_pub("debug", &debug_msg);
 
-void cmdVelCb (const geometry_msgs::Vector3& cmd_vel) {
+void cmdVelCb (const geometry_msgs::Twist& cmd_vel) {
 	if (PID_hdg.GetMode())
 		// Heading controller is active. Joystick commands the desired heading.
-		g_hdg_sp = cmd_vel.y;
+		g_hdg_sp = cmd_vel.linear.y;
 	else
 		// Joystick commands the rotational part of motor mixer directly.
-		g_vel_rot = cmd_vel.y / (PI);
+		g_vel_rot = cmd_vel.linear.y / (PI);
 
 	if (pid_enabled)
 		// Speed controller is active. Joystick commands the desired speed.
-		g_speed_sp = cmd_vel.x * g_speed_scale;
+		g_speed_sp = cmd_vel.linear.x * g_speed_scale;
 	else
 		// Joystick commands the linear part of motor mixer directly.
-		g_vel_lin = cmd_vel.x * 1;
+		g_vel_lin = cmd_vel.linear.x * 1;
 
-	if (cmd_vel.z == 1)
+	if (cmd_vel.linear.z == 1)
 		odometry.reset();
 }
-ros::Subscriber<geometry_msgs::Vector3> cmd_sub("cmd_vel", &cmdVelCb);
+ros::Subscriber<geometry_msgs::Twist> cmd_sub("cmd_vel", &cmdVelCb);
 
 void dynReconfCb (const robotball_msgs::DynReconf& msg) {
 	if (!msg.speed.enabled)

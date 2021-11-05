@@ -1,0 +1,7 @@
+<launch>
+  <env name="ROSCONSOLE_FORMAT" value="[${severity}] [${node}]> ${message}"/>
+
+  <!-- Driver with joystick control -->
+  <node pkg="robotball_control" type="open_loop_controller.py" ns="$(env NAMESPACE)" name="open_loop" output="screen"/>
+
+</launch>

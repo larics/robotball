@@ -5,7 +5,7 @@ import rospy
 
 from std_srvs.srv import Empty
 from sensor_msgs.msg import Joy
-from geometry_msgs.msg import Vector3
+from geometry_msgs.msg import Twist, Vector3
 from robotball_msgs.msg import Odometry, IMU, Status, Debug, DynReconf
 
 from dynamic_reconfigure.server import Server
@@ -29,8 +29,8 @@ class Driver(object):
         rospy.sleep(1)
 
         # Publishers
-        self.cmd_vel = Vector3()
-        self.cmd_vel_pub = rospy.Publisher('cmd_vel', Vector3, queue_size=1)
+        self.cmd_vel = Twist()
+        self.cmd_vel_pub = rospy.Publisher('man_vel', Twist, queue_size=1)
         self.dyn_reconf_pub = rospy.Publisher('dyn_reconf', DynReconf, queue_size=1, latch=True)
 
         # Subscribers
@@ -41,10 +41,10 @@ class Driver(object):
 
         # Dynamic reconfigure server for PID tuning
         self.server = Server(PIDConfig, self.reconfigure_callback)
-        self.client = Client('robotball_driver', timeout=2.0)
+        self.client = Client('driver', timeout=2.0)
 
         # Joystick control
-        rospy.Subscriber("joy", Joy, self.joy_callback, queue_size=1)
+        rospy.Subscriber("/joy", Joy, self.joy_callback, queue_size=1)
 
         rate = rospy.Rate(10)
         while not rospy.is_shutdown():
@@ -69,6 +69,7 @@ class Driver(object):
         # Green "A" button: Toggle automatic and manual mode.
         if data.buttons[1]:
             self.mode_manual = not self.mode_manual
+            rospy.loginfo("Switched to %s mode.", "MANUAL" if self.mode_manual else "AUTOMATIC")
 
         # D-pad: Step speed inputs.
         if data.axes[5] == 1:
@@ -94,7 +95,7 @@ class Driver(object):
 
         # Package the commanded velocity message.
         # Blue "X" button: Reset odometry.
-        self.cmd_vel = Vector3(magnitude, direction, data.buttons[0])
+        self.cmd_vel.linear = Vector3(magnitude, direction, data.buttons[0])
 
         # "L1" button: Enable/disable heading controller.
         if data.buttons[4]:
@@ -105,8 +106,8 @@ class Driver(object):
 
         # Press back and start simultaneously to reset the Arduino.
         if data.buttons[8] and data.buttons[9]:
-            rospy.wait_for_service('/serial_node/reset_arduino')
-            reset = rospy.ServiceProxy('/serial_node/reset_arduino', Empty)
+            rospy.wait_for_service('serial_node/reset_arduino')
+            reset = rospy.ServiceProxy('serial_node/reset_arduino', Empty)
             try:
                 rospy.logwarn("Resetting arduino now!")
                 resp = reset()

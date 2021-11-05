@@ -1,11 +1,24 @@
 <launch>
-
+  <env name="ROSCONSOLE_FORMAT" value="[${severity}] [${node}]> ${message}"/>
+  
   <arg name="port" default="/dev/tty_arduino"/>
+  <arg name="config_locks" default="$(find robotball_driver)/cfg/twist_mux_locks.yaml"/>
+  <arg name="config_topics" default="$(find robotball_driver)/cfg/twist_mux_topics.yaml"/>
+  <arg name="cmd_vel_out" default="cmd_vel"/>
 
-  <node pkg="rosserial_arduino" type="serial_node.py" name="serial_node" output="screen">
+  <!-- ROS interface for serial communication -->
+  <node pkg="rosserial_arduino" type="serial_node.py" ns="$(env NAMESPACE)" name="serial_node" output="screen">
     <param name="port" value="$(arg port)"/>
     <param name="baud" value="115200"/>
   </node>
 
-  <node pkg="robotball_driver" type="driver.py" name="robotball_driver" output="screen"/>
+  <!-- Driver with joystick control -->
+  <node pkg="robotball_driver" type="driver.py" ns="$(env NAMESPACE)" name="driver" output="screen"/>
+
+  <!-- Start velocity multiplexer for mixing signals from PID and joystick. -->
+  <node pkg="twist_mux" type="twist_mux" name="twist_mux" ns="$(env NAMESPACE)" output="screen">
+    <remap from="cmd_vel_out" to="$(arg cmd_vel_out)"/>
+    <rosparam file="$(arg config_locks)"  command="load"/>
+    <rosparam file="$(arg config_topics)" command="load"/>
+  </node>
 </launch>
