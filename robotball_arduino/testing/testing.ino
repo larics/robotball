@@ -39,7 +39,10 @@ const DiffDriveParams params{
     .rwr = g_rwr * r_motor_sign,
     .ws = g_ws,
     .sr = g_shell_radius,
-    .cr = g_contact_radius
+    .cr = g_contact_radius,
+    .k1 = g_k1,
+    .k2 = g_k2,
+    .k3 = g_k3
 };
 DiffDriveOdom odometry(pins, g_encoder_rate, params);
 /******************************************************************************/
@@ -181,25 +184,25 @@ void publih_debug() {
 
 void setup ()
 {
-  /* Set up pins. */
-	pinMode(LED_BUILTIN, OUTPUT);
+    /* Set up pins. */
+    pinMode(LED_BUILTIN, OUTPUT);
 	pinMode(led_pin, OUTPUT);
 
 	/* Set up ROS. */
-  nh.getHardware()->setBaud(115200);
+    nh.getHardware()->setBaud(115200);
 	nh.initNode();
-  nh.advertise(imu_pub);
-  nh.advertise(odom_pub);
-  nh.advertise(debug_pub);
-  nh.advertise(status_pub);
-  nh.subscribe(cmd_sub);
-  nh.subscribe(reconf_sub);
-  nh.spinOnce();
+    nh.advertise(imu_pub);
+    nh.advertise(odom_pub);
+    nh.advertise(debug_pub);
+    nh.advertise(status_pub);
+    nh.subscribe(cmd_sub);
+    nh.subscribe(reconf_sub);
+    nh.spinOnce();
 
-  //timer.every(1.0 / 1  * 1000, publish_status);
-  timer.every(1.0 / 10 * 1000, publish_odom);
-  timer.every(1.0 / 10 * 1000, publih_debug);
-  timer.every(1.0 / 10 * 1000, publish_imu);
+    //timer.every(1.0 / 1  * 1000, publish_status);
+    timer.every(1.0 / 10 * 1000, publish_odom);
+    timer.every(1.0 / 10 * 1000, publih_debug);
+    timer.every(1.0 / 10 * 1000, publish_imu);
 
 	/* Initialize BNO055 IMU. */
 	while(!bno.begin())

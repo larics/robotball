@@ -1,0 +1,14 @@
+<launch>
+  <env name="ROSCONSOLE_FORMAT" value="[${severity}] [${node}]> ${message}"/>
+  
+  <arg name="port" default="/dev/tty_arduino"/>
+
+  <!-- ROS interface for serial communication -->
+  <node pkg="rosserial_arduino" type="serial_node.py" ns="$(env NAMESPACE)" name="serial_node" output="screen">
+    <param name="port" value="$(arg port)"/>
+    <param name="baud" value="115200"/>
+  </node>
+
+  <!-- Driver with joystick control -->
+  <node pkg="robotball_localization" type="calibrate_odom.py" ns="$(env NAMESPACE)" name="driver" output="screen"/>
+</launch>

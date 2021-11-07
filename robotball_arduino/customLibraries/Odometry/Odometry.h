@@ -19,6 +19,9 @@ typedef struct {
     float ws;   // Wheel separation (m)
     float sr;   // Outer shell radius (m)
     float cr;   // Radius of the contact point between wheels and inner shell (m)
+    float k1;   // Odometry calibration coefficient 1
+    float k2;   // Odometry calibration coefficient 2
+    float k3;   // Odometry calibration coefficient 3
 } DiffDriveParams;
 
 
@@ -27,12 +30,13 @@ class DiffDriveOdom
     public: 
         DiffDriveOdom(EncoderPins pins, int encoder_rate, DiffDriveParams params);
         void reset();
-        void update();
+        bool update();
         void getEncoderShift(float* left_shift, float* right_shift, bool degrees = false);
         void getWheelPos(float* left_pos, float* right_pos, bool degrees = false);
         void getWheelOmega(float* left_omega, float* right_omega, bool degrees = false);
         void getRobotVel(double* linear, double* angular, bool degrees = false);
         void getRobotPos(float* x, float* y, float* theta, bool degrees = false);
+        void getTimeDelta(float* dt);
 
     private:
         // Encoder hardware
@@ -42,6 +46,7 @@ class DiffDriveOdom
 
         // Last update time
         unsigned long last_update_;
+        float time_delta_
 
         // Velocities and positions of the wheels
         float pos_l_;
@@ -63,6 +68,10 @@ class DiffDriveOdom
         float transmission_;
         int8_t lDir_;
         int8_t rDir_;
+
+        float k1_;
+        float k2_;
+        float k3_;
 
 };
 

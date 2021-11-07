@@ -12,6 +12,9 @@ DiffDriveOdom::DiffDriveOdom(EncoderPins pins, int encoder_rate, DiffDriveParams
     lR_ = fabs(params.lwr);
     rR_ = fabs(params.rwr);
     b_ = params.ws;
+    k1_ = params.k1;
+    k2_ = params.k2;
+    k3_ = params.k3;
     transmission_ = params.sr / params.cr;
     lDir_ = params.lwr < 0 ? -1 : 1;
     rDir_ = params.rwr < 0 ? -1 : 1;
@@ -19,6 +22,7 @@ DiffDriveOdom::DiffDriveOdom(EncoderPins pins, int encoder_rate, DiffDriveParams
     // Initialize other variables.
     // Last update time and encoder positions
     last_update_ = millis();
+    time_delta_ = 0;
 
     // Velocities and positions of the wheels
     pos_l_ = 0;
@@ -34,13 +38,13 @@ DiffDriveOdom::DiffDriveOdom(EncoderPins pins, int encoder_rate, DiffDriveParams
     linear_ = 0;
 }
 
-void DiffDriveOdom::update()
+bool DiffDriveOdom::update()
 {
     // Calculate the time elapsed since last update.
     unsigned long now = millis();
-    float time_delta = (now - last_update_) / 1000.0;
-    if (time_delta < 0.100)
-        return;
+    time_delta_ = (now - last_update_) / 1000.0;
+    if (time_delta_ < 0.100)
+        return false;
     last_update_ = now;
 
     // Read the encoder offset since last update.
@@ -56,13 +60,15 @@ void DiffDriveOdom::update()
     omega_r_ = (right_pos_delta / COUNTER_PER_ROTATION_) * TWO_PI / time_delta;
         
     // Calculate angular and linear velocity of the robot.
-    angular_ = (-omega_l_ * lR_ + omega_r_ * rR_) / b_;
-    linear_ = (omega_l_ * lR_ + omega_r_ * rR_) / 2 * transmission_; 
+    angular_ = (-omega_l_ * lR_ * k1_ + omega_r_ * rR_ * k2_) / (b_ * k3_);
+    linear_ = (omega_l_ * lR_ * k1_ + omega_r_ * rR_ * k2_) / 2 * transmission_;
     
     // Calculate the position of the robot in (x,y) coordinates.
     theta_ = theta_ + angular_ * time_delta;
     x_ = x_ + linear_ * time_delta * cos(theta_);
     y_ = y_ + linear_ * time_delta * sin(theta_);
+
+    return true
 }
 
 
@@ -95,6 +101,11 @@ void DiffDriveOdom::getRobotPos(float* x, float* y, float* theta, bool degrees)
     *x = x_;
     *y = y_;
     *theta = theta_ * (degrees ? RAD_TO_DEG : 1);
+}
+
+void DiffDriveOdom::getTimeDelta(float* dt)
+{
+    *dt = time_delta_;
 }
 
 void DiffDriveOdom::reset()
