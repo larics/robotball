@@ -52,23 +52,23 @@ bool DiffDriveOdom::update()
     int right_pos_delta = rDir_ * enc_right_->readAndReset();
 
     // Calculate the position of encoders.
-    pos_l_ += left_pos_delta / COUNTER_PER_ROTATION_ * TWO_PI;
-    pos_r_ += right_pos_delta / COUNTER_PER_ROTATION_ * TWO_PI;
+    pos_l_ += (left_pos_delta / COUNTER_PER_ROTATION_ * TWO_PI);
+    pos_r_ += (right_pos_delta / COUNTER_PER_ROTATION_ * TWO_PI);
 
     // Calculate angular speed of both wheels.
-    omega_l_ = (left_pos_delta / COUNTER_PER_ROTATION_) * TWO_PI / time_delta;
-    omega_r_ = (right_pos_delta / COUNTER_PER_ROTATION_) * TWO_PI / time_delta;
+    omega_l_ = (left_pos_delta / COUNTER_PER_ROTATION_) * TWO_PI / time_delta_;
+    omega_r_ = (right_pos_delta / COUNTER_PER_ROTATION_) * TWO_PI / time_delta_;
         
     // Calculate angular and linear velocity of the robot.
     angular_ = (-omega_l_ * lR_ * k1_ + omega_r_ * rR_ * k2_) / (b_ * k3_);
-    linear_ = (omega_l_ * lR_ * k1_ + omega_r_ * rR_ * k2_) / 2 * transmission_;
+    linear_ = ( (omega_l_ * lR_ * k1_ + omega_r_ * rR_ * k2_) / 2 ) * transmission_;
     
     // Calculate the position of the robot in (x,y) coordinates.
-    theta_ = theta_ + angular_ * time_delta;
-    x_ = x_ + linear_ * time_delta * cos(theta_);
-    y_ = y_ + linear_ * time_delta * sin(theta_);
+    theta_ = theta_ + angular_ * time_delta_;
+    x_ = x_ + linear_ * time_delta_ * cos(theta_);
+    y_ = y_ + linear_ * time_delta_ * sin(theta_);
 
-    return true
+    return true;
 }
 
 
@@ -125,4 +125,8 @@ void DiffDriveOdom::reset()
     theta_ = 0;
     angular_ = 0;
     linear_ = 0;
+
+    // Also reset the encoders.
+    enc_left_->write(0);
+    enc_right_->write(0);
 }

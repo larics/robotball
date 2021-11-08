@@ -46,7 +46,7 @@ class DiffDriveOdom
 
         // Last update time
         unsigned long last_update_;
-        float time_delta_
+        float time_delta_;
 
         // Velocities and positions of the wheels
         float pos_l_;

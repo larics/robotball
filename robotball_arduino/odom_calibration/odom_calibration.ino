@@ -58,11 +58,20 @@ double g_pitch;
 double g_roll;
 double g_hdg;
 
+double g_pitch_sp = 0;
+double g_hdg_sp = 0;
+
 double g_vel_lin;
 double g_vel_rot;
 
 bool g_cal_lin = false;
 bool g_cal_rot = false;
+
+// pitch -> motor_speed (linear.x)
+PID PID_pitch(&g_pitch, &g_vel_lin, &g_pitch_sp, 0.5, 0, 0, 50, REVERSE); // In, Out, Sp, Kp, Ki, Kd (0.3/1.57, 0, 0), Ts
+
+// hdg_ref -> motor_speed (angular.z)
+PID PID_hdg(&g_hdg, &g_vel_rot, &g_hdg_sp, 3, 1, 0, 50, DIRECT);  // In, Out, Sp, Kp, Ki, Kd (2, 5, 1), Ts
 /******************************************************************************/
 
 /*************************** LOW-LEVEL STUFF **********************************/
@@ -87,7 +96,7 @@ void cmdVelCb (const geometry_msgs::Twist& cmd_vel) {
 	    g_cal_rot = true;
 }
 ros::Subscriber<geometry_msgs::Twist> cmd_sub("cmd_vel", &cmdVelCb);
-}
+
 /******************************************************************************/
 
 void setup ()
@@ -150,11 +159,18 @@ void setup ()
         debug_msg.odom.omega.right = g_shell_radius / g_contact_radius;
         debug_pub.publish(&debug_msg);
         nh.spinOnce();
-	    delay(50)
+	    delay(50);
 	}
 
+	// TODO: correct orientation
+	PID_pitch.SetOutputLimits(-1, 1);
+	PID_hdg.SetOutputLimits(-1, 1);
+	PID_pitch.SetDeadzone(0);
+	PID_hdg.SetDeadzone(0);
+	PID_pitch.SetMode(AUTOMATIC);
+	PID_hdg.SetMode(AUTOMATIC);
+
 	linear_calibration();
-    odometry.reset();
 	rotation_calibration();
 }
 
@@ -162,44 +178,83 @@ void setup ()
 void loop() {}
 
 
+void control_robot(int speed)
+{
+	imu::Quaternion quat = bno.getQuat();
+	quat = quat * rot_offset;
+	imu::Vector<3> quat_euler = quat.toEuler();
+	g_pitch = quat_euler.y();
+	g_hdg = RobotUtils::wrap_pi_pi(quat_euler.x() - PI/2);
+
+	if (speed == 0)
+		PID_pitch.Compute();
+	else
+		g_vel_lin = speed / 255.0;
+	PID_hdg.Compute();
+
+	double vel_left = g_vel_lin - g_vel_rot;
+	double vel_right = g_vel_lin + g_vel_rot;
+
+	debug_msg.vel.left = g_vel_lin;
+	debug_msg.vel.right = g_vel_lin;
+
+	double scale_factor = 1.0;
+	double abs_left = fabs(vel_left);
+	double abs_right = fabs(vel_right);
+	if ((abs_left > 1) || (abs_right > 1))
+	{
+  	double x = max(abs_left, abs_right);
+  	scale_factor = 1.0 / x;
+	}
+
+	vel_left = round(vel_left * scale_factor * 255);
+	vel_right = round(vel_right * scale_factor * 255);
+
+	motor_right.setSpeed(r_motor_sign * vel_right);
+	motor_left.setSpeed(l_motor_sign * vel_left);  
+
+	debug_msg.motor.left  = vel_left;
+	debug_msg.motor.right = vel_right;
+
+	nh.spinOnce();
+
+}
+
+
 void linear_calibration()
 {
     while (!g_cal_lin)
 	{
-        nh.spinOnce();
-        delay(50);
+        control_robot(0);
 	}
 	int i = 0;
 	int speed = 0;
+	odometry.reset();
     while (i < 200)
     {
         if (i < 50) speed += 2;
         if (i >= 150) speed -= 2;
-        motor_right.setSpeed(r_motor_sign * 150);
-	    motor_left.setSpeed(l_motor_sign * -150);
+        control_robot(speed);
 
 	    if (odometry.update())
         {
-            imu::Quaternion quat = bno.getQuat();
-            quat = quat * rot_offset;
-            imu::Vector<3> quat_euler = quat.toEuler();
-            double hdg = RobotUtils::wrap_0_2pi(quat_euler.x());
-
             float wl, wr, dt;
             float x, y, theta;
-            odometry.getRobotPos(&x, &y, &theta, false)
+            odometry.getRobotPos(&x, &y, &theta, false);
             odometry.getWheelOmega(&wl, &wr, false);
             odometry.getTimeDelta(&dt);
             debug_msg.odom.pos.left = x;
             debug_msg.odom.pos.right = y;
             debug_msg.hdg.measured = theta;
-            debug_msg.hdg.setpoint = hdg;
+            debug_msg.hdg.setpoint = g_hdg;
             debug_msg.odom.omega.left = wl;
 	        debug_msg.odom.omega.right = wr;
 	        debug_msg.odom.time = dt;
 	        debug_pub.publish(&debug_msg);
 	        nh.spinOnce();
         }
+        i++;
+        delay(100);
     }
     motor_right.setSpeed(0);
     motor_left.setSpeed(0);
@@ -211,17 +266,17 @@ void rotation_calibration()
 {
     while (!g_cal_rot)
 	{
-        nh.spinOnce();
-        delay(50);
+        control_robot(0);
 	}
+	odometry.reset();
 	imu::Quaternion quat = bno.getQuat();
     quat = quat * rot_offset;
     imu::Vector<3> quat_euler = quat.toEuler();
-    double last_hdg = RobotUtils::wrap_0_2pi(quat_euler.x());
+    double last_hdg = RobotUtils::wrap_0_2pi(quat_euler.x() - PI / 2);
     double total_rot = 0;
     motor_right.setSpeed(r_motor_sign * 150);
 	motor_left.setSpeed(l_motor_sign * -150);
-    while (total_rot < 20 * 2 * PI)
+    while (total_rot < 15 * 2 * PI)
     {
         /* Get the latest orientation data. */
         imu::Quaternion quat = bno.getQuat();
@@ -230,13 +285,15 @@ void rotation_calibration()
         double hdg = RobotUtils::wrap_0_2pi(quat_euler.x());
         /* ---------- */
         double rot_diff = hdg - last_hdg;
-        if (rot_diff < 0) rot_diff += 2 * PI;
+        last_hdg = hdg;
+        if (rot_diff < 0) rot_diff += (2 * PI);
+        if (rot_diff > 0.2) rot_diff = 0;
         total_rot += rot_diff;
 
         if (odometry.update())
         {
             float wl, wr, dt, theta;
-            odometry.getRobotPos(&wl, &wr, &theta, false)
+            odometry.getRobotPos(&wl, &wr, &theta, false);
             odometry.getWheelOmega(&wl, &wr, false);
             odometry.getTimeDelta(&dt);
             debug_msg.odom.pos.left = theta;

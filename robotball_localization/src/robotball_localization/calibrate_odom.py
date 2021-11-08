@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import rospy
 import math
 import numpy as np
@@ -5,10 +7,10 @@ from scipy.optimize import least_squares
 from collections import namedtuple
 
 from geometry_msgs.msg import Vector3, Twist
-from sensor_msgs.msg import Joy
 from robotball_msgs.msg import Status, Debug
 
 Params = namedtuple('Params', ['l_r', 'r_r', 'ws', 't'])
+
 
 def calibrate_linear(k, *args):
     def update_odometry(old_odom, wl, wr, dt, k, p):
@@ -56,13 +58,13 @@ def calibrate_rotation(k, *args):
 
 class Calibration(object):
     def __init__(self):
-        self.active_step = None
+        self.active_step = 'none'
         self.wl = []
         self.wr = []
         self.dt = []
         self.final_odom = None
         self.final_true = None
-        self.last_msg = None
+        self.last_msg = 0
         self.robot_params = None
 
         # Publishers
@@ -72,33 +74,39 @@ class Calibration(object):
         rospy.Subscriber('status', Status, self.status_cb, queue_size=1)
         rospy.Subscriber('debug', Debug, self.debug_cb, queue_size=1)
 
+        while self.last_msg == 0 or rospy.get_time() - self.last_msg < 5:
+            if not rospy.is_shutdown():
+                rospy.sleep(0.5)
+
         ######################################
-        input("READY FOR LINEAR CALIBRATION?")
+        input("\nREADY FOR LINEAR CALIBRATION?")
         self.active_step = "lin"
-        self.cmd_pub.publish(linear=Vector3(1, 0, 0))
+        for i in range(5):
+            self.cmd_pub.publish(linear=Vector3(1, 0, 0))
         self.last_msg = rospy.get_time()
         # We are receiving messages.
         while self.active_step == 'lin' and rospy.get_time() - self.last_msg < 5:
             rospy.sleep(0.5)
         # Final message has arrived, let's calculate the coefficients.
         # But first, we need to know the final position of the robot.
-        self.final_true[0] = int(input("Enter the value of x coordinate: "))
-        self.final_true[1] = int(input("Enter the value of y coordinate: "))
+        self.final_true[0] = float(input("Enter the value of x coordinate: "))
+        self.final_true[1] = float(input("Enter the value of y coordinate: "))
 
         odom_history = np.array([self.wl, self.wr, self.dt])
         final_pose = np.array([self.final_true])
         k_init = np.array([1, 1, 1])
-        error = calibrate_linear(k_init, odom_history, final_pose)
+        error = calibrate_linear(k_init, odom_history, final_pose, self.robot_params)
         print("Error before LINEAR calibration: {}".format(error))
-        k_lin = least_squares(calibrate_linear, k_init, args=(odom_history, final_pose))
-        error = calibrate_linear(k_lin.x, odom_history, final_pose)
+        k_lin = least_squares(calibrate_linear, k_init, args=(odom_history, final_pose, self.robot_params))
+        error = calibrate_linear(k_lin.x, odom_history, final_pose, self.robot_params)
         print("Error after LINEAR calibration: {}".format(error))
         print("Final calibration parameters: \n {}\n".format(k_lin.x))
 
         ######################################
-        input("READY FOR LINEAR CALIBRATION?")
-        self.active_step = "lin"
-        self.cmd_pub.publish(linear=Vector3(0, 1, 0))
+        input("READY FOR ROTATION CALIBRATION?")
+        self.active_step = "rot"
+        for i in range(5):
+            self.cmd_pub.publish(linear=Vector3(0, 1, 0))
         self.last_msg = rospy.get_time()
         # We are receiving messages for ***ROTATION*** calibration.
         while self.active_step == 'rot' and rospy.get_time() - self.last_msg < 5:
@@ -107,11 +115,12 @@ class Calibration(object):
         odom_history = np.array([self.wl, self.wr, self.dt])
         final_pose = np.array([self.final_true])
         k_init = np.array([k_lin.x[2]])
-        print("Error before ROTATION calibration: {}".format(calibrate_rotation(k_init, odom_history, final_pose, k_lin.x[0:2])))
-        k_rot = least_squares(calibrate_rotation, k_init, args=(odom_history, final_pose, k_lin.x[0:2]))
-        print("Error after ROTATION calibration: {}".format(calibrate_rotation(k_rot.x, odom_history, final_pose, k_lin.x[0:2])))
+        error = calibrate_rotation(k_init, odom_history, final_pose, k_lin.x[0:2], self.robot_params)
+        print("Error before ROTATION calibration: {}".format(error))
+        k_rot = least_squares(calibrate_rotation, k_init, args=(odom_history, final_pose, k_lin.x[0:2], self.robot_params))
+        error = calibrate_rotation(k_init, odom_history, final_pose, k_lin.x[0:2], self.robot_params)
+        print("Error after ROTATION calibration: {}".format(error))
         print("Final calibration parameters: \n {}\n".format(k_rot.x))
-
 
     def status_cb(self, data):
         # Calibration status
@@ -120,6 +129,7 @@ class Calibration(object):
             rospy.loginfo("Calibraton status> SYS: %s, GYR: %s, ACC: %s, MAG: %s", *calibration[1:])
         elif calibration[0] == '9':
             rospy.loginfo_once("Calibraton complete.")
+        self.last_msg = rospy.get_time()
 
     def debug_cb(self, data):
         if self.active_step == 'none':
@@ -127,6 +137,8 @@ class Calibration(object):
                                        r_r=data.odom.pos.right,
                                        ws=data.odom.omega.left,
                                        t=data.odom.omega.right)
+            rospy.loginfo_once("robot_params: \n %s", self.robot_params)
+
 
         if self.active_step == 'lin':
             self.wl.append(data.odom.omega.left)

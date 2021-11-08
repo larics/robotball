@@ -10,5 +10,5 @@
   </node>
 
   <!-- Driver with joystick control -->
-  <node pkg="robotball_localization" type="calibrate_odom.py" ns="$(env NAMESPACE)" name="driver" output="screen"/>
+  <node pkg="robotball_localization" type="calibrate_odom.py" ns="$(env NAMESPACE)" name="calibration" output="screen"/>
 </launch>

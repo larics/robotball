@@ -1,11 +1,11 @@
 #ifndef _SETUP_H_
 #define _SETUP_H_
 
-const float g_lwr = 0.03875;  			// Left wheel radius (m) == 38.75 mm
-const float g_rwr = 0.03875;  			// Right wheel radius (m) == 38.75 mm
-const float g_ws  = 0.323;				// Wheel separation (m) == 32.3 cm
-const float g_shell_radius = 0.1775;	// Outer shell radius (m) == 17.75 cm
-const float g_contact_radius = 0.0666;	// Radius of contact point between wheels and inner shell (m) == 6.66 cm
+const float g_lwr = 0.045;  			// Left wheel radius (m) == 45 mm
+const float g_rwr = 0.045;  			// Right wheel radius (m) == 45 mm
+const float g_ws  = 0.320;				// Wheel separation (m) == 32.0 cm
+const float g_shell_radius = 0.1765;	// Outer shell radius (m) == 17.65 cm
+const float g_contact_radius = 0.0860;	// Radius of contact point between wheels and inner shell (m) == 8.60 cm
 
 const float g_k1 = 1;  // Odometry calibration coefficient 1
 const float g_k2 = 1;  // Odometry calibration coefficient 2
