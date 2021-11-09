@@ -180,6 +180,12 @@ void loop() {}
 
 void control_robot(int speed)
 {
+	uint8_t system, gyro, accel, mag;
+	system = gyro = accel = mag = 0;
+	bno.getCalibration(&system, &gyro, &accel, &mag);
+	status_msg.calibration = 10000 + system * 1000 + gyro * 100 + accel * 10 + mag;
+	status_pub.publish(&status_msg);
+
 	imu::Quaternion quat = bno.getQuat();
 	quat = quat * rot_offset;
 	imu::Vector<3> quat_euler = quat.toEuler();

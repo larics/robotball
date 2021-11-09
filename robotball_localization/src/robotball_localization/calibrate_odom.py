@@ -89,15 +89,22 @@ class Calibration(object):
             rospy.sleep(0.5)
         # Final message has arrived, let's calculate the coefficients.
         # But first, we need to know the final position of the robot.
-        self.final_true[0] = float(input("Enter the value of x coordinate: "))
-        self.final_true[1] = float(input("Enter the value of y coordinate: "))
+        # self.final_true[0] = float(input("Enter the value of x coordinate: "))
+        # self.final_true[1] = float(input("Enter the value of y coordinate: "))
+        d = float(input("Enter the distance from starting point: "))
+        a = float(input("Enter the angle (deg) from starting point: "))
+        self.final_true[0] = d * math.cos(math.radians(a))
+        self.final_true[1] = d * math.sin(math.radians(a))
 
         odom_history = np.array([self.wl, self.wr, self.dt])
+        print(np.transpose(odom_history))
         final_pose = np.array([self.final_true])
+        print(final_pose)
         k_init = np.array([1, 1, 1])
         error = calibrate_linear(k_init, odom_history, final_pose, self.robot_params)
         print("Error before LINEAR calibration: {}".format(error))
-        k_lin = least_squares(calibrate_linear, k_init, args=(odom_history, final_pose, self.robot_params))
+        k_lin = least_squares(calibrate_linear, k_init, bounds=(0, 2),
+                              args=(odom_history, final_pose, self.robot_params))
         error = calibrate_linear(k_lin.x, odom_history, final_pose, self.robot_params)
         print("Error after LINEAR calibration: {}".format(error))
         print("Final calibration parameters: \n {}\n".format(k_lin.x))
@@ -117,8 +124,9 @@ class Calibration(object):
         k_init = np.array([k_lin.x[2]])
         error = calibrate_rotation(k_init, odom_history, final_pose, k_lin.x[0:2], self.robot_params)
         print("Error before ROTATION calibration: {}".format(error))
-        k_rot = least_squares(calibrate_rotation, k_init, args=(odom_history, final_pose, k_lin.x[0:2], self.robot_params))
-        error = calibrate_rotation(k_init, odom_history, final_pose, k_lin.x[0:2], self.robot_params)
+        k_rot = least_squares(calibrate_rotation, k_init, bounds=(0, 2),
+                              args=(odom_history, final_pose, k_lin.x[0:2], self.robot_params))
+        error = calibrate_rotation(k_rot.x, odom_history, final_pose, k_lin.x[0:2], self.robot_params)
         print("Error after ROTATION calibration: {}".format(error))
         print("Final calibration parameters: \n {}\n".format(k_rot.x))
 
