@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import math
 import copy
@@ -151,6 +151,7 @@ class RefGenerator(object):
         f = self.saved_config['f']
         A = self.saved_config['A']
         B = self.saved_config['B']
+
         def int(x):
             return math.sqrt((a * A * math.cos(a * x + f))**2 + (b * B * math.cos(b * x))**2)
 

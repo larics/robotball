@@ -12,7 +12,12 @@ topics:
     timeout : 0.5
     priority: 100
   -
-    name    : open_loop
+    name    : open_loop_control
     topic   : open_vel
     timeout : 0.5
     priority: 50
+  -
+    name    : reference_generator
+    topic   : ref_vel
+    timeout : 0.5
+    priority: 75
