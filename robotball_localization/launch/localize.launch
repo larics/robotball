@@ -1,0 +1,5 @@
+<launch>
+  <include file="$(find robotball_localization)/launch/remote_pozyx.launch"/>
+
+  <include file="$(find robotball_localization)/launch/kalman.launch"/>
+</launch>

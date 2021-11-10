@@ -42,7 +42,7 @@ class KalmanFilterNode(object):
         self.initial_position = None
 
         # Create a publisher for commands
-        pub = rospy.Publisher('estimated', Odometry, queue_size=self.pub_frequency)
+        pub = rospy.Publisher('odom_estimated', Odometry, queue_size=self.pub_frequency)
         if self.debug_enabled:
             # Debug publisher runs at the same frequency as incoming data.
             self.debug_pub = rospy.Publisher('kalman_debug', Odometry, queue_size=1)
@@ -73,7 +73,7 @@ class KalmanFilterNode(object):
                              (0, 0, 0, 1),
                              rospy.Time.now(),
                              rospy.get_namespace() + 'base_link',
-                             'map')
+                             'world')
             rospy.logdebug(' x = % 7.5f', self.X_est.pose.pose.position.x)
             rospy.logdebug(' y = % 7.5f', self.X_est.pose.pose.position.y)
             rospy.logdebug('vx = % 7.5f', self.X_est.twist.twist.linear.x)
