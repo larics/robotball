@@ -184,7 +184,6 @@ void control_robot(int speed)
 	system = gyro = accel = mag = 0;
 	bno.getCalibration(&system, &gyro, &accel, &mag);
 	status_msg.calibration = 10000 + system * 1000 + gyro * 100 + accel * 10 + mag;
-	status_pub.publish(&status_msg);
 
 	imu::Quaternion quat = bno.getQuat();
 	quat = quat * rot_offset;
@@ -201,9 +200,6 @@ void control_robot(int speed)
 	double vel_left = g_vel_lin - g_vel_rot;
 	double vel_right = g_vel_lin + g_vel_rot;
 
-	debug_msg.vel.left = g_vel_lin;
-	debug_msg.vel.right = g_vel_lin;
-
 	double scale_factor = 1.0;
 	double abs_left = fabs(vel_left);
 	double abs_right = fabs(vel_right);
@@ -219,9 +215,7 @@ void control_robot(int speed)
 	motor_right.setSpeed(r_motor_sign * vel_right);
 	motor_left.setSpeed(l_motor_sign * vel_left);  
 
-	debug_msg.motor.left  = vel_left;
-	debug_msg.motor.right = vel_right;
-
+	status_pub.publish(&status_msg);
 	nh.spinOnce();
 
 }

@@ -26,6 +26,7 @@ class Driver(object):
         self.first_pass = True
         self.mode_manual = True
         self.latest_config = None
+        self.calibration_complete = False
         rospy.sleep(1)
 
         # Publishers
@@ -55,10 +56,11 @@ class Driver(object):
     def status_cb(self, data):
         # Calibration status
         calibration = str(data.calibration)
-        if calibration[0] == '1':
+        if calibration[0] == '1' and not self.calibration_complete:
             rospy.loginfo("Calibraton status> SYS: %s, GYR: %s, ACC: %s, MAG: %s", *calibration[1:])
         elif calibration[0] == '9':
             rospy.loginfo_once("Calibraton complete.")
+            self.calibration_complete = True
 
         # Battery status
         # TODO

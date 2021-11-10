@@ -172,7 +172,7 @@ void publish_odom() {
 
 void publish_status() {
 	/* Get the robot status */
-	status_msg.battery = analogRead(bat_pin);
+	// status_msg.battery = analogRead(bat_pin);
 
 	status_pub.publish(&status_msg);
 }
@@ -199,7 +199,7 @@ void setup ()
     nh.subscribe(reconf_sub);
     nh.spinOnce();
 
-    //timer.every(1.0 / 1  * 1000, publish_status);
+    timer.every(1.0 / 10  * 1000, publish_status);
     timer.every(1.0 / 10 * 1000, publish_odom);
     timer.every(1.0 / 10 * 1000, publih_debug);
     timer.every(1.0 / 10 * 1000, publish_imu);
@@ -253,6 +253,10 @@ void setup ()
 void loop() {
 
 	nh.spinOnce();
+
+	uint8_t system, gyro, accel, mag;
+	bno.getCalibration(&system, &gyro, &accel, &mag);
+	status_msg.calibration = 10000 + system * 1000 + gyro * 100 + accel * 10 + mag;
 
 	/* Get the latest orientation data. */
 	imu::Quaternion quat = bno.getQuat();
