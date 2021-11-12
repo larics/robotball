@@ -13,7 +13,7 @@ from geometry_msgs.msg import Pose2D, Vector3, Quaternion, Point
 from std_msgs.msg import ColorRGBA, Bool
 from visualization_msgs.msg import Marker
 
-from robotball_path.cfg import GeneratorConfig
+from robotball_path.cfg import LissajousGeneratorConfig
 
 
 def lissajous(t, config, scale=1):
@@ -55,7 +55,7 @@ class RefGenerator(object):
         rospy.Subscriber('/draw_path', Bool, self.draw_lissajous)
 
         # Dynamic reconfigure server.
-        Server(GeneratorConfig, self.reconf_cb)
+        Server(LissajousGeneratorConfig, self.reconf_cb)
 
         self.v = self.saved_v
         pose_ref = Pose2D()
@@ -161,7 +161,7 @@ class RefGenerator(object):
 
 
 if __name__ == "__main__":
-    rospy.init_node("generator")
+    rospy.init_node("ref_generator")
 
     try:
         node = RefGenerator()

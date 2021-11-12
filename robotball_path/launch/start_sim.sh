@@ -15,8 +15,8 @@ killall() {
 
 for ((i=0; i<$number_of_nodes; i++));
 do
-	ROS_NAMESPACE="robot_$i" rosrun robotball_path reference_follower.py &
-	ROS_NAMESPACE="robot_$i" rosrun robotball_path reference_generator.py &
+	ROS_NAMESPACE="robot_$i" rosrun robotball_path reference_follower.py ref_vel:=cmd_vel odom_estimated:=odom &
+	ROS_NAMESPACE="robot_$i" rosrun robotball_path "$1"_reference_generator.py odom_estimated:=odom &
 done
 echo "DONE"
 

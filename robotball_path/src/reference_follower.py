@@ -172,7 +172,7 @@ class RefTracker(object):
 
 
 if __name__ == "__main__":
-    rospy.init_node("follower")
+    rospy.init_node("ref_follower")
 
     try:
         node = RefTracker()

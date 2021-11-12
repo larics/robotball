@@ -1,8 +1,9 @@
 <launch>
   <env name="ROSCONSOLE_FORMAT" value="[${severity}] [${node}]> ${message}"/>
 
-  <arg name="num" default="5"/>
-  <arg name="setup" default="5_plus"/>
+  <arg name="num" default="2"/>
+  <arg name="setup" default="2"/>
+  <arg name="type" default="geometric"/>
 
   <arg name="map_world" default="$(find robotball_path)/resources/worlds/$(arg setup).world"/>
   <arg name="map_yaml" default="$(find robotball_path)/resources/maps/default.yaml"/>
@@ -13,10 +14,11 @@
 
   <!-- Set default parameters. -->
   <param name="num_of_robots" type="int" value="$(arg num)"/>
-  <rosparam command="load" file="$(find robotball_path)/cfg/$(arg setup).yaml"/>
+  <rosparam command="load" file="$(find robotball_path)/cfg/$(arg type)/$(arg setup).yaml"/>
+  <rosparam command="load" file="$(find robotball_path)/cfg/default_pid.yaml"/>
 
   <!-- Start trajectory generators and followers. -->
-  <node pkg="robotball_path" type="start.sh" name="launcher" output="screen"/>
+  <node pkg="robotball_path" type="start_sim.sh" name="launcher" output="screen" args="$(arg type)"/>
 
   <!-- Start rviz. -->
   <node pkg="rviz" type="rviz" name="rviz" args="-d $(find robotball_path)/launch/default.rviz"/>

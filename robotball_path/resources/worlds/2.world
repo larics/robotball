@@ -3,9 +3,10 @@ include "definitions.inc"
 # load an environment bitmap
 floorplan
 (
-	name "1"
+	name "2"
 	bitmap "../maps/default.bmp"
 	size [9 9 1]  # duzina sirina visina
 	pose [ 0 0 0 0 ]
 )
 sphero( pose [ 0.000 0.000 0 0.000 ] name "sphero_0" color "blue")
+sphero( pose [ 1.000 0.000 0 0.000 ] name "sphero_1" color "blue")

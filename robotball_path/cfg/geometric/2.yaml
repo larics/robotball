@@ -1,0 +1,15 @@
+robot_0:
+  ref_generator:
+    N: 4
+    yaw: 0
+    scale: 2
+    C: 2
+    D: 2
+
+robot_1:
+  ref_generator:
+    N: 4
+    yaw: 0
+    scale: 2
+    C: -2
+    D: -2
