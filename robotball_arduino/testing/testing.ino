@@ -1,5 +1,6 @@
 #include <ros.h>
 #include <geometry_msgs/Twist.h>
+#include <geometry_msgs/Vector3.h>
 #include <robotball_msgs/Odometry.h>
 #include <robotball_msgs/Status.h>
 #include <robotball_msgs/Debug.h>
@@ -57,14 +58,12 @@ double g_speed_sp;
 double g_pitch_sp;
 double g_hdg_sp;
 
-double g_speed;
+double g_speed_odom;
+double g_speed_extern;
 double g_pitch;
 double g_roll;
 double g_hdg;
 double g_hdg_offset;
-
-double g_speed_out;
-double g_pitch_out;
 
 double g_vel_lin;
 double g_vel_rot;
@@ -77,7 +76,7 @@ int mode = MODE_STABLE;
 bool pid_enabled = false;
 
 // v_ref -> pitch
-PID PID_speed(&g_speed, &g_vel_lin, &g_speed_sp, 0, 0, 0, 100, DIRECT);  // In, Out, Sp, Kp, Ki, Kd (2, 5, 1), Ts
+PID PID_speed(&g_speed_odom, &g_vel_lin, &g_speed_sp, 0, 0, 0, 100, DIRECT);  // In, Out, Sp, Kp, Ki, Kd (2, 5, 1), Ts
 
 // pitch -> motor_speed (linear.x)
 PID PID_pitch(&g_pitch, &g_vel_lin, &g_pitch_sp, 0, 0, 0, 50, REVERSE); // In, Out, Sp, Kp, Ki, Kd (0.3/1.57, 0, 0), Ts
@@ -94,7 +93,7 @@ const int8_t bat_pin = A1;
 /******************************************************************************/
 
 /******************************* ROS SETUP ************************************/
-// ros::NodeHandle_<ArduinoHardware, 5, 3, 256, 256> nh;
+// ros::NodeHandle_<ArduinoHardware, 5, 5, 1024, 1024> nh;
 ros::NodeHandle nh;
 
 robotball_msgs::Odometry odom_msg;
@@ -159,6 +158,15 @@ void dynReconfCb (const robotball_msgs::DynReconf& msg) {
 }
 ros::Subscriber<robotball_msgs::DynReconf> reconf_sub("dyn_reconf", &dynReconfCb);
 
+void externVelCb (const geometry_msgs::Vector3& msg) {
+	float x = msg.x;
+	float y = msg.y;
+
+	g_speed_extern = sqrt(x*x + y*y);
+
+}
+ros::Subscriber<geometry_msgs::Vector3> vel_sub("vel_estimated", &externVelCb);
+
 
 Timer<4, millis> timer;
 
@@ -173,7 +181,6 @@ void publish_odom() {
 void publish_status() {
 	/* Get the robot status */
 	// status_msg.battery = analogRead(bat_pin);
-
 	status_pub.publish(&status_msg);
 }
 
@@ -197,6 +204,7 @@ void setup ()
     nh.advertise(status_pub);
     nh.subscribe(cmd_sub);
     nh.subscribe(reconf_sub);
+   	nh.subscribe(vel_sub);
     nh.spinOnce();
 
     timer.every(1.0 / 10  * 1000, publish_status);
@@ -256,7 +264,7 @@ void loop() {
 
 	uint8_t system, gyro, accel, mag;
 	bno.getCalibration(&system, &gyro, &accel, &mag);
-	status_msg.calibration = 10000 + system * 1000 + gyro * 100 + accel * 10 + mag;
+	status_msg.calibration = 90000 + system * 1000 + gyro * 100 + accel * 10 + mag;
 
 	/* Get the latest orientation data. */
 	imu::Quaternion quat = bno.getQuat();
@@ -291,9 +299,12 @@ void loop() {
 	}
 
 	/* Limit the speed setpoint in large turns to avoid excessive rolling. */
-	float hdg_err = fabs(g_hdg - g_hdg_sp);
-	float limit_speed_sp = fmap(hdg_err, 0, PI, g_speed_scale, 0);
-	g_speed_sp = constrain(g_speed_sp, -limit_speed_sp, limit_speed_sp);
+	if (PID_hdg.GetMode() == AUTOMATIC)
+	{
+		float hdg_err = fabs(g_hdg - g_hdg_sp);
+		float limit_speed_sp = fmap(hdg_err, 0, PI, g_speed_scale, 0);
+		g_speed_sp = constrain(g_speed_sp, -limit_speed_sp, limit_speed_sp);
+	}
 	/* ---------- */
 
 
@@ -301,7 +312,7 @@ void loop() {
 	double angular;
 	float pos_x, pos_y, pos_theta;
 	odometry.update();
-	odometry.getRobotVel(&g_speed, &angular);
+	odometry.getRobotVel(&g_speed_odom, &angular);
 	odometry.getRobotPos(&pos_x, &pos_y, &pos_theta);
 
 	float left, right;
@@ -318,7 +329,7 @@ void loop() {
 	odom_msg.pose.x = pos_x;
 	odom_msg.pose.y = pos_y;
 	odom_msg.pose.theta = pos_theta;
-	odom_msg.velocity.x = g_speed;
+	odom_msg.velocity.x = g_speed_odom;
 	odom_msg.velocity.z = angular;
 	/* ---------- */
 
@@ -339,7 +350,7 @@ void loop() {
 		{
 			if (g_speed_sp == 0)
 			{
-				if (g_speed < 0.05)
+				if (g_speed_odom < 0.05)
 				{
 					mode = MODE_STABLE;
 					PID_speed.SetMode(MANUAL);
@@ -354,7 +365,7 @@ void loop() {
 	PID_pitch.Compute();
 
 	debug_msg.speed.setpoint = g_speed_sp;
-	debug_msg.speed.measured = g_speed;
+	debug_msg.speed.measured = g_speed_extern;
 	debug_msg.speed.output   = g_vel_lin;
 	debug_msg.pitch.setpoint = g_pitch_sp;
 	debug_msg.pitch.measured = g_pitch;

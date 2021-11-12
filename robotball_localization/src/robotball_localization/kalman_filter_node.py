@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import tf
+import tf2_ros
 import rospy
 import math
-from geometry_msgs.msg import TransformStamped
+from geometry_msgs.msg import TransformStamped, Quaternion, Vector3
 from nav_msgs.msg import Odometry
 
 from kalman_filter import KalmanFilter
@@ -42,7 +42,8 @@ class KalmanFilterNode(object):
         self.initial_position = None
 
         # Create a publisher for commands
-        pub = rospy.Publisher('odom_estimated', Odometry, queue_size=self.pub_frequency)
+        pub_odom = rospy.Publisher('odom_estimated', Odometry, queue_size=self.pub_frequency)
+        pub_vel = rospy.Publisher('vel_estimated', Vector3, queue_size=1)
         if self.debug_enabled:
             # Debug publisher runs at the same frequency as incoming data.
             self.debug_pub = rospy.Publisher('kalman_debug', Odometry, queue_size=1)
@@ -60,20 +61,24 @@ class KalmanFilterNode(object):
         self.X_est.pose.pose = self.initial_position
 
         # Create tf broadcaster
-        br = tf.TransformBroadcaster()
+        br = tf2_ros.TransformBroadcaster()
 
         # Main while loop.
         rate = rospy.Rate(self.pub_frequency)
         while not rospy.is_shutdown():
             self.X_est = self.filter.predict()
 
-            pub.publish(self.X_est)
-            pos = self.X_est.pose.pose.position
-            br.sendTransform((pos.x, pos.y, pos.z),
-                             (0, 0, 0, 1),
-                             rospy.Time.now(),
-                             rospy.get_namespace() + 'base_link',
-                             'world')
+            t = TransformStamped()
+            t.header.stamp = rospy.Time.now()
+            t.header.frame_id = 'world'
+            t.child_frame_id = rospy.get_namespace() + 'base_link'
+            t.transform.translation = self.X_est.pose.pose.position
+            t.transform.rotation = Quaternion(0, 0, 0, 1)
+            br.sendTransform(t)
+
+            pub_odom.publish(self.X_est)
+            pub_vel.publish(self.X_est.twist.twist.linear.x, self.X_est.twist.twist.linear.y, 0)
+
             rospy.logdebug(' x = % 7.5f', self.X_est.pose.pose.position.x)
             rospy.logdebug(' y = % 7.5f', self.X_est.pose.pose.position.y)
             rospy.logdebug('vx = % 7.5f', self.X_est.twist.twist.linear.x)
