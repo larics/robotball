@@ -2,10 +2,13 @@
 
 import math
 import rospy
+import tf2_ros
+import tf_conversions as tfc
 
+from tf.transformations import quaternion_from_euler
 from std_srvs.srv import Empty
 from sensor_msgs.msg import Joy
-from geometry_msgs.msg import Twist, Vector3
+from geometry_msgs.msg import Twist, Vector3, TransformStamped
 from robotball_msgs.msg import Odometry, IMU, Status, Debug, DynReconf
 
 from dynamic_reconfigure.server import Server
@@ -26,7 +29,9 @@ class Driver(object):
         self.first_pass = True
         self.mode_manual = True
         self.latest_config = None
-        self.calibration_complete = False
+
+        self.position = Vector3()
+
         rospy.sleep(1)
 
         # Publishers
@@ -34,33 +39,60 @@ class Driver(object):
         self.cmd_vel_pub = rospy.Publisher('man_vel', Twist, queue_size=1)
         self.dyn_reconf_pub = rospy.Publisher('dyn_reconf', DynReconf, queue_size=1, latch=True)
 
-        # Subscribers
-        # rospy.Subscriber('odom', Odometry, self.odom_cb, queue_size=1)
-        # rospy.Subscriber('imu', IMU, self.imu_cb, queue_size=1)
-        rospy.Subscriber('status', Status, self.status_cb, queue_size=1)
-        # rospy.Subscriber('debug', Debug, self.debug_cb, queue_size=1)
+        # Create tf broadcaster
+        self.tf_br = tf2_ros.TransformBroadcaster()
 
         # Dynamic reconfigure server for PID tuning
         self.server = Server(PIDConfig, self.reconfigure_callback)
         self.client = Client('driver', timeout=2.0)
 
+        # Subscribers
+        rospy.Subscriber('odom', Odometry, self.odom_cb, queue_size=1)
+        rospy.Subscriber('imu', IMU, self.imu_cb, queue_size=1)
+        rospy.Subscriber('status', Status, self.status_cb, queue_size=1)
+        # rospy.Subscriber('debug', Debug, self.debug_cb, queue_size=1)
+
         # Joystick control
         rospy.Subscriber("/joy", Joy, self.joy_callback, queue_size=1)
 
+        # Main while loop.
         rate = rospy.Rate(10)
         while not rospy.is_shutdown():
             if self.mode_manual:
                 self.cmd_vel_pub.publish(self.cmd_vel)
             rate.sleep()
 
+    def odom_cb(self, data):
+        self.position = Vector3(data.pose.x, data.pose.y, 0.1776)  # Radius of the sphere
+
+        t = TransformStamped()
+        t.header.stamp = rospy.Time.now()
+        t.header.frame_id = 'odom'
+        t.child_frame_id = rospy.get_namespace() + 'wheelbase'
+        t.transform.translation = self.position
+        q = tfc.transformations.quaternion_from_euler(0, 0, data.pose.theta)
+        t.transform.rotation.x = q[0]
+        t.transform.rotation.y = q[1]
+        t.transform.rotation.z = q[2]
+        t.transform.rotation.w = q[3]
+        self.tf_br.sendTransform(t)
+
+    def imu_cb(self, data):
+        t = TransformStamped()
+        t.header.stamp = rospy.Time.now()
+        t.header.frame_id = 'odom'
+        t.child_frame_id = rospy.get_namespace() + 'IMU'
+        t.transform.translation = self.position
+        t.transform.rotation = data.orientation
+        self.tf_br.sendTransform(t)
+
     def status_cb(self, data):
         # Calibration status
         calibration = str(data.calibration)
-        if calibration[0] == '1' and not self.calibration_complete:
+        if calibration[0] == '1':
             rospy.loginfo("Calibraton status> SYS: %s, GYR: %s, ACC: %s, MAG: %s", *calibration[1:])
         elif calibration[0] == '9':
             rospy.loginfo_once("Calibraton complete.")
-            self.calibration_complete = True
 
         # Battery status
         # TODO
@@ -84,7 +116,7 @@ class Driver(object):
 
         # Right stick: Gradual direction inputs.
         if data.axes[2] != 0 or data.axes[3] != 0:
-            direction = wrap_pi_pi(math.atan2(data.axes[3], -data.axes[2]) - math.pi / 2)
+            direction = wrap_pi_pi(math.atan2(data.axes[3], -data.axes[2]))
             self.last_direction = direction
         # D-pad: Step direction inputs.
         else:

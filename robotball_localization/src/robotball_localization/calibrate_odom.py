@@ -137,7 +137,7 @@ class Calibration(object):
             rospy.loginfo("Calibraton status> SYS: %s, GYR: %s, ACC: %s, MAG: %s", *calibration[1:])
         elif calibration[0] == '9':
             rospy.loginfo_once("Calibraton complete.")
-        self.last_msg = rospy.get_time()
+            self.last_msg = rospy.get_time()
 
     def debug_cb(self, data):
         if self.active_step == 'none':
