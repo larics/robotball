@@ -10,6 +10,10 @@
   <!-- Set default parameters. -->
   <param name="num_of_robots" type="int" value="$(arg num)"/>
   <rosparam command="load" file="$(find robotball_path)/cfg/$(arg setup).yaml"/>
+  <rosparam command="load" file="$(find robotball_path)/cfg/default_pid.yaml"/>
 
   <param name="robot_description" textfile="$(find robotball_path)/resources/simple_ball.urdf"/>
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="link1_broadcaster" args="0 0 0 0 0 0 1 world pozyx" />
+
 </launch>

@@ -3,19 +3,19 @@
 import math
 import copy
 import collections
-
 import numpy as np
 import rospy
+
 from dynamic_reconfigure.server import Server
 from tf.transformations import quaternion_from_euler
-from geometry_msgs.msg import Twist, Pose2D, Vector3, Quaternion, Point, Pose
-from nav_msgs.msg import Odometry
 from std_msgs.msg import ColorRGBA
+from nav_msgs.msg import Odometry
+from geometry_msgs.msg import Twist, Pose2D, Vector3, Quaternion, Point, Pose
 from visualization_msgs.msg import Marker, MarkerArray
 
+from robotball_path.cfg import FollowerConfig
 
-# from robotball_path.cfg import GeneratorConfig
-
+from pid import PID
 
 class RefTracker(object):
     def __init__(self):
@@ -24,8 +24,17 @@ class RefTracker(object):
         self.odom = Odometry()
         self.odom_old = Odometry()
 
+        rate = 10
+        c = rospy.get_param('/position_pid')
+        self.pid_x = PID(c['P'], c['I'], c['D'], 1.0 / rate)
+        self.pid_y = PID(c['P'], c['I'], c['D'], 1.0 / rate)
+        self.pid_limit = c['lim']
+
         # Publishers.
         self.vel_pub = rospy.Publisher('ref_vel', Twist, queue_size=1)
+
+        # Dynamic reconfigure server.
+        Server(FollowerConfig, self.reconf_cb)
 
         # Visaulization marker
         marker = Marker()
@@ -77,12 +86,14 @@ class RefTracker(object):
         rospy.Subscriber('pos_ref', Pose2D, self.ref_cb, queue_size=1)
         rospy.Subscriber('odom_estimated', Odometry, self.odom_cb, queue_size=1)
 
-        rate = rospy.Rate(50)
+        r = rospy.Rate(rate)
         cum_dist = 0
         while not rospy.is_shutdown():
+            # CONTROL
             cmd_vel = self.compute()
             self.vel_pub.publish(cmd_vel)
 
+            # VISUALIZATION
             angle = Quaternion(*quaternion_from_euler(0, 0, cmd_vel.linear.y))
             scale = Vector3(cmd_vel.linear.x, 0.08, 0.08)
 
@@ -91,33 +102,33 @@ class RefTracker(object):
             marker.scale = scale
             self.marker_pub.publish(marker)
 
-            dist, angle = self.get_relative_motion()
-            cum_dist += dist
-            if cum_dist > trail_spacing:
-                ## CYLINDER TRAIL
-                # marker.pose = self.odom.pose.pose
-                # marker.pose.orientation = Quaternion(*quaternion_from_euler( math.pi / 2, 0, angle + math.pi / 2))
-                # marker.pose.position.z = 0.175
-                # marker.id = (marker.id + 1) % trail_number
-                # self.marker_pub.publish(marker)
+            # dist, angle = self.get_relative_motion()
+            # cum_dist += dist
+            # if cum_dist > trail_spacing:
+            #     ## CYLINDER TRAIL
+            #     # marker.pose = self.odom.pose.pose
+            #     # marker.pose.orientation = Quaternion(*quaternion_from_euler( math.pi / 2, 0, angle + math.pi / 2))
+            #     # marker.pose.position.z = 0.175
+            #     # marker.id = (marker.id + 1) % trail_number
+            #     # self.marker_pub.publish(marker)
 
-                ## RING TRAIL
-                # marker.pose = self.odom.pose.pose
-                # marker.pose.orientation = Quaternion(*quaternion_from_euler(math.pi / 2, 0, angle + math.pi / 2))
-                # marker.pose.position.z = 0.175
-                # marker.id = (marker.id + 1) % trail_number
-                # point_list.append(marker)
-                # markers.markers = list(point_list)
-                # self.marker_pub.publish(markers)
+            #     ## RING TRAIL
+            #     # marker.pose = self.odom.pose.pose
+            #     # marker.pose.orientation = Quaternion(*quaternion_from_euler(math.pi / 2, 0, angle + math.pi / 2))
+            #     # marker.pose.position.z = 0.175
+            #     # marker.id = (marker.id + 1) % trail_number
+            #     # point_list.append(marker)
+            #     # markers.markers = list(point_list)
+            #     # self.marker_pub.publish(markers)
 
-                ## LINE TRAIL
-                # point_list.append(Point(self.odom.pose.pose.position.x, self.odom.pose.pose.position.y, 0.175))
-                # marker.points = list(point_list)
-                # self.marker_pub.publish(marker)
+            #     ## LINE TRAIL
+            #     # point_list.append(Point(self.odom.pose.pose.position.x, self.odom.pose.pose.position.y, 0.175))
+            #     # marker.points = list(point_list)
+            #     # self.marker_pub.publish(marker)
 
-                cum_dist = 0
+            #     cum_dist = 0
 
-            rate.sleep()
+            r.sleep()
 
     def ref_cb(self, msg):
         self.reference = msg
@@ -125,6 +136,19 @@ class RefTracker(object):
     def odom_cb(self, msg):
         self.odom_old = copy.deepcopy(self.odom)
         self.odom = msg
+
+    def reconf_cb(self, config, level):
+        self.pid_x.kp = config['P']
+        self.pid_x.ki = config['I']
+        self.pid_x.kd = config['D']
+
+        self.pid_y.kp = config['P']
+        self.pid_y.ki = config['I']
+        self.pid_y.kd = config['D']
+
+        self.pid_limit = config['lim']
+
+        return config
 
     def get_relative_motion(self):
         pos_new = self.odom.pose.pose.position
@@ -137,16 +161,11 @@ class RefTracker(object):
 
     def compute(self):
         cmd_vel = Twist()
-        radius = 0.5
-        max_force = 0.25
 
-        err_x = self.reference.x - self.odom.pose.pose.position.x
-        err_y = self.reference.y - self.odom.pose.pose.position.y
+        x = self.pid_x.compute(self.reference.x, self.odom.pose.pose.position.x)
+        y = self.pid_y.compute(self.reference.y, self.odom.pose.pose.position.y)
 
-        x = max_force * min(err_x / radius, 1)
-        y = max_force * min(err_y / radius, 1)
-
-        cmd_vel.linear.x = math.sqrt(x**2 + y**2)
+        cmd_vel.linear.x = min(math.sqrt(x**2 + y**2), self.pid_limit)
         cmd_vel.linear.y = math.atan2(y, x)
 
         return cmd_vel
