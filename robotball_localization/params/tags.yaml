@@ -1,7 +1,9 @@
 tags:
   - id: ''
+    name: 'robot0'
+  - id: ''
     name: 'robot1'
-  # - id: ''
-  #   name: 'robot2'
+  - id: ''
+    name: 'robot2'
 
 
