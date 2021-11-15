@@ -1,17 +1,8 @@
 #!/usr/bin/env python3
-
 import math
 import rospy
 
 from geometry_msgs.msg import Twist, Vector3
-
-
-def wrap_0_2pi(x):
-    return math.fmod(2 * math.pi + math.fmod(x, 2 * math.pi), 2 * math.pi)
-
-
-def wrap_pi_pi(x):
-    return -math.pi + wrap_0_2pi(x + math.pi)
 
 
 class OpenLoopController(object):

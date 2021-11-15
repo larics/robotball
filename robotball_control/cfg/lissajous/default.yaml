@@ -1,0 +1,11 @@
+robot_0:
+  ref_generator:
+    a: 1
+    b: 1
+    f: 1.57
+    A: 1.5
+    B: 1.5
+    C: 4
+    D: 4
+    Speed: 0.3
+    Sync: True
