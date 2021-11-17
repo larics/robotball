@@ -71,13 +71,15 @@ double g_hdg_offset;
 
 double g_vel_lin;
 double g_vel_rot;
+double g_vel_input;
 
 unsigned long last_cmd_vel;  // Last time velocity command was received
 
 #define MODE_STABLE 0
 #define MODE_DRIVE 1
 int mode = MODE_STABLE;
-bool PID_lin_enabled = false;
+bool PID_speed_enabled = false;
+bool PID_pitch_enabled = false;
 
 // v_ref -> pitch
 PID PID_speed(g_speed_used, &g_vel_lin, &g_speed_sp, 0, 0, 0, 100, DIRECT);  // In, Out, Sp, Kp, Ki, Kd (2, 5, 1), Ts
@@ -120,12 +122,12 @@ void cmdVelCb (const geometry_msgs::Twist& cmd_vel) {
         // Joystick commands the rotational part of motor mixer directly.
         g_vel_rot = cmd_vel.linear.y / (PI);
 
-    if (PID_lin_enabled)
+    if (PID_speed_enabled)
         // Speed controller is active. Joystick commands the desired speed.
         g_speed_sp = cmd_vel.linear.x * g_speed_scale;
     else
         // Joystick commands the linear part of motor mixer directly.
-        g_vel_lin = cmd_vel.linear.x * 1;
+        g_vel_input = cmd_vel.linear.x * 1;
 
     if (cmd_vel.linear.z == 1)
         odometry.reset();
@@ -135,21 +137,13 @@ void cmdVelCb (const geometry_msgs::Twist& cmd_vel) {
 ros::Subscriber<geometry_msgs::Twist> cmd_sub("cmd_vel", &cmdVelCb);
 
 void dynReconfCb (const robotball_msgs::DynReconf& msg) {
-    if (!msg.speed.enabled)
-    {
-        PID_pitch.SetMode(MANUAL);
-        PID_speed.SetMode(MANUAL);
-        PID_lin_enabled = false;
-        mode = MODE_STABLE;
-    }
-    else if (!PID_lin_enabled)
-    {
-        PID_speed.SetMode(MANUAL);
-        PID_pitch.SetMode(AUTOMATIC);
-        PID_lin_enabled = true;
-        mode = MODE_STABLE;
-    }
     PID_hdg.SetMode(msg.hdg.enabled);
+    PID_pitch_enabled = msg.pitch.enabled;
+    PID_speed_enabled = msg.speed.enabled;
+    if (msg.pitch.enabled && mode == MODE_STABLE)
+    {
+        PID_pitch.SetMode(AUTOMATIC);
+    }
 
     bool success = true;
     success &= PID_pitch.SetTunings(msg.pitch.P, msg.pitch.I, msg.pitch.D);
@@ -227,7 +221,7 @@ void setup ()
             delay(500);
             digitalWrite(led_pin, LOW);
             delay(500);
-            status_msg.calibration = 10000;
+            status_msg.calibration = -1;
             status_pub.publish(&status_msg);
             nh.spinOnce();
         }
@@ -312,7 +306,7 @@ void loop() {
     if (PID_hdg.GetMode() == AUTOMATIC)
     {
         float hdg_err = fabs(g_hdg - g_hdg_sp);
-        if (PID_lin_enabled)
+        if (PID_speed_enabled)
         {
             float limit_speed_sp = fmap(hdg_err, 0, PI, g_speed_scale, 0);
             g_speed_sp = constrain(g_speed_sp, -limit_speed_sp, limit_speed_sp);
@@ -354,30 +348,30 @@ void loop() {
 
     /* Compute all PID outputs */
     // Select the current mode (pitch controller or speed controller active).
-    if (PID_lin_enabled)
+    if (mode == MODE_STABLE)
     {
-        if (mode == MODE_STABLE)
+        if ((PID_speed_enabled && g_speed_sp != 0) || (!PID_speed_enabled && g_vel_input != 0))
         {
-            if (g_speed_sp != 0) 
-            {
-                mode = MODE_DRIVE;
-                PID_speed.SetMode(AUTOMATIC);
-                PID_pitch.SetMode(MANUAL);
-            }
+            mode = MODE_DRIVE;
+            PID_speed.SetMode(PID_speed_enabled ? AUTOMATIC : MANUAL);
+            PID_pitch.SetMode(MANUAL);
         }
-        else // mode == MODE_DRIVE
+    }
+    else  // mode == MODE_DRIVE
+    {
+        g_vel_lin = g_vel_input;
+        if ((PID_speed_enabled && g_speed_sp == 0) || (!PID_speed_enabled && g_vel_input == 0))
         {
-            if (g_speed_sp == 0)
+            if (g_speed_odom < 0.05)
             {
-                if (g_speed_odom < 0.05)
-                {
-                    mode = MODE_STABLE;
-                    PID_speed.SetMode(MANUAL);
-                    PID_pitch.SetMode(AUTOMATIC);
-                }
+                mode = MODE_STABLE;
+                PID_speed.SetMode(MANUAL);
+                PID_pitch.SetMode(PID_pitch_enabled ? AUTOMATIC : MANUAL);
             }
         }
     }
+
+
     // Compute the outputs. Inactive controllers are automatically skipped.
     PID_hdg.Compute();
     PID_speed.Compute();

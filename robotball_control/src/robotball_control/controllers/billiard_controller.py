@@ -16,7 +16,7 @@ from visualization_msgs.msg import Marker, MarkerArray
 
 from robotball_msgs.msg import IMU as myIMU
 
-from robotball_control.cfg import BillardConfig
+from robotball_control.cfg import BilliardConfig
 
 from util import Vector2, wrap_pi_pi
 
@@ -62,7 +62,7 @@ class BilliardController(object):
         self.marker_pub = rospy.Publisher('cmd_viz', Marker, queue_size=1)
 
         # Subscribers.
-        subs = [rospy.Subscriber(f'/{name}/odom_estimated', Odometry, self.odom_cb, args=i, queue_size=1)
+        subs = [rospy.Subscriber(f'/{name}/odom_estimated', Odometry, self.odom_cb, name, queue_size=1)
                 for name in default['robots']]
         rospy.Subscriber('imu', myIMU, self.imu_cb, queue_size=1)
 
@@ -75,10 +75,11 @@ class BilliardController(object):
         while not rospy.is_shutdown():
             # CONTROL
             # When the robot approaches the limits, reduce its speed.
-            if self.poses[self.me].y > limits['y_top'] - self.config['reduced_buffer'] or
-               self.poses[self.me].y < limits['y_bottom'] + self.config['reduced_buffer'] or
-               self.poses[self.me].x > limits['x_right'] - self.config['reduced_buffer'] or
-               self.poses[self.me].x < limits['x_left'] + self.config['reduced_buffer']:
+            if (self.poses[self.me].y > limits['y_top'] - self.config['reduced_buffer']
+                or self.poses[self.me].y < limits['y_bottom'] + self.config['reduced_buffer']
+                or self.poses[self.me].x > limits['x_right'] - self.config['reduced_buffer']
+                or self.poses[self.me].x < limits['x_left'] + self.config['reduced_buffer']):
+                
                 cmd_vector.set_mag(self.config['reduced_speed'])
 
             # When the robot exits the limited area, turn it around.
@@ -128,10 +129,10 @@ class BilliardController(object):
                 cmd_vector.set_angle(direction.arg())
                 out_of_limits_x = 0
                 out_of_limits_y = 0
-                
+
 
             # AVOID
-            res_vector = copy(cmd_vector)
+            res_vector = copy.copy(cmd_vector)
             for robot in self.poses:
                 if robot != self.me:
                     delta_x = self.poses[self.me].x - self.poses[robot].x
@@ -174,6 +175,6 @@ if __name__ == "__main__":
     rospy.init_node("ref_follower")
 
     try:
-        node = BillardController()
+        node = BilliardController()
     except rospy.ROSInterruptException:
         pass

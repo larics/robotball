@@ -3,6 +3,6 @@
 
   <!-- Billiard controller -->
   <node pkg="robotball_control" type="billiard_controller.py" ns="$(env NAMESPACE)" name="billiard_controller" output="screen"/>
-  <rosparam command="load" file="$(find robotball_control)/cfg/default_billiard.yaml"/>
+  <rosparam command="load" file="$(find robotball_control)/cfg/default_billiard.yaml" param="billiard_params"/>
 
 </launch>
