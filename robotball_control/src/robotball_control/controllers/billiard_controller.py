@@ -8,7 +8,7 @@ import numpy as np
 import rospy
 
 from dynamic_reconfigure.server import Server
-from tf.transformations import quaternion_from_euler
+from tf.transformations import quaternion_from_euler, euler_from_quaternion
 from std_msgs.msg import ColorRGBA
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist, Pose2D, Vector3, Quaternion, Point, Pose
@@ -33,8 +33,6 @@ class BilliardController(object):
         self.poses = {name: Pose2D() for name in default['robots']}
 
         cmd_vel_msg = Twist()
-        cmd_vel_msg.linear.x = self.config['set_speed']
-        cmd_vel_msg.linear.y = random.uniform(-math.pi, math.pi)
 
         bounced_x = False
         bounced_y = False
@@ -42,16 +40,18 @@ class BilliardController(object):
         out_of_limits_x = 0
         out_of_limits_y = 0
 
-        # Publishers.
-        self.vel_pub = rospy.Publisher('ref_vel', Twist, queue_size=1)
+        # Virtual boundaries points for visaulization marker
+        points = [(limits['x_left'], limits['y_bottom']),
+                  (limits['x_right'], limits['y_bottom']),
+                  (limits['x_right'], limits['y_top']),
+                  (limits['x_left'], limits['y_top'])]
+        self.outer_bounds = [Point(x, y, 0) for x, y in points]
+        self.bound_marker_pub = rospy.Publisher('/limits_viz', Marker, queue_size=1)
 
-        # Dynamic reconfigure server.
-        Server(BilliardConfig, self.reconf_cb)
-
-        # Visaulization marker
+        # Visaulization marker for velocity vector
         marker = Marker()
         marker.ns = rospy.get_namespace()
-        marker.header.frame_id = rospy.get_namespace() + 'base_link'
+        marker.header.frame_id = 'world'
         marker.type = Marker.ARROW
         marker.action = Marker.ADD
         marker.color = ColorRGBA(0, 1, 1, 1)
@@ -60,6 +60,12 @@ class BilliardController(object):
         marker.lifetime = rospy.Duration(0)
         marker.frame_locked = True
         self.marker_pub = rospy.Publisher('cmd_viz', Marker, queue_size=1)
+
+        # Publishers.
+        self.vel_pub = rospy.Publisher('ref_vel', Twist, queue_size=1)
+
+        # Dynamic reconfigure server.
+        Server(BilliardConfig, self.reconf_cb)
 
         # Subscribers.
         subs = [rospy.Subscriber(f'/{name}/odom_estimated', Odometry, self.odom_cb, name, queue_size=1)
@@ -70,17 +76,19 @@ class BilliardController(object):
         while all([item == Pose2D() for item in self.poses.values()]):
             rospy.sleep(0.5)
 
+        # Main while loop
         r = rospy.Rate(10)
-        cmd_vector = Vector2()
+        cmd_vector = Vector2.from_norm_arg(self.config['set_speed'], random.uniform(-math.pi, math.pi))
         while not rospy.is_shutdown():
             # CONTROL
             # When the robot approaches the limits, reduce its speed.
             if (self.poses[self.me].y > limits['y_top'] - self.config['reduced_buffer']
-                or self.poses[self.me].y < limits['y_bottom'] + self.config['reduced_buffer']
-                or self.poses[self.me].x > limits['x_right'] - self.config['reduced_buffer']
-                or self.poses[self.me].x < limits['x_left'] + self.config['reduced_buffer']):
-                
+                    or self.poses[self.me].y < limits['y_bottom'] + self.config['reduced_buffer']
+                    or self.poses[self.me].x > limits['x_right'] - self.config['reduced_buffer']
+                    or self.poses[self.me].x < limits['x_left'] + self.config['reduced_buffer']):
                 cmd_vector.set_mag(self.config['reduced_speed'])
+            else:
+                cmd_vector.set_mag(self.config['set_speed'])
 
             # When the robot exits the limited area, turn it around.
             if self.poses[self.me].y > limits['y_top']:
@@ -109,16 +117,14 @@ class BilliardController(object):
                     rospy.logwarn("x < left limit. New direction: %s", cmd_vector.arg())
                 out_of_limits_x += 1
 
-            # When the robot returns to the allowed area, reset flags and its speed.
-            if limits['x_left'] < self.poses[self.me].x < limits['x_right']:
+            # When the robot returns to the allowed area, reset flags.
+            if limits['x_left']  < self.poses[self.me].x < limits['x_right']:
                 bounced_x = False
                 out_of_limits_x = 0
-                cmd_vector.set_mag(self.config['set_speed'])
                 # rospy.loginfo("X in bounds")
             if limits['y_bottom'] < self.poses[self.me].y < limits['y_top']:
                 bounced_y = False
                 out_of_limits_y = 0
-                cmd_vector.set_mag(self.config['set_speed'])
                 # rospy.loginfo("Y in bounds")
 
             # If the robot stays out of bounds for too long, send to towards the middle of the arena.
@@ -130,17 +136,18 @@ class BilliardController(object):
                 out_of_limits_x = 0
                 out_of_limits_y = 0
 
-
             # AVOID
+            prev_speed = cmd_vector.norm()
             res_vector = copy.copy(cmd_vector)
             for robot in self.poses:
                 if robot != self.me:
                     delta_x = self.poses[self.me].x - self.poses[robot].x
                     delta_y = self.poses[self.me].y - self.poses[robot].y
                     delta = Vector2(delta_x, delta_y)
-                    if delta.norm() < 1.5:
+                    if delta.norm() < self.config['safe_dist']:
                         res_vector = res_vector + delta * self.config['repulsion']
 
+            res_vector.set_mag(prev_speed)
             cmd_vel_msg.linear.x = res_vector.norm()
             cmd_vel_msg.linear.y = res_vector.arg()
 
@@ -151,6 +158,8 @@ class BilliardController(object):
             scale = Vector3(cmd_vel_msg.linear.x, 0.08, 0.08)
 
             marker.header.stamp = rospy.get_rostime()
+            marker.pose.position.x = self.poses[self.me].x
+            marker.pose.position.y = self.poses[self.me].y
             marker.pose.orientation = angle
             marker.scale = scale
             self.marker_pub.publish(marker)
@@ -167,6 +176,36 @@ class BilliardController(object):
     def reconf_cb(self, config, level):
         self.config = config
         rospy.loginfo("Paramaters updated!")
+
+        marker = Marker()
+        marker.header.frame_id = 'world'
+        marker.ns = rospy.get_namespace()
+        marker.id = 1
+        marker.type = Marker.LINE_STRIP
+        marker.action = Marker.ADD
+        marker.pose = Pose(Point(), Quaternion(0, 0, 0, 1))
+        marker.scale = Vector3(0.05, 0, 0)
+        marker.color = ColorRGBA(1, 0, 0, 1)
+        marker.lifetime = rospy.Duration(0)
+        marker.points = self.outer_bounds
+        marker.points.append(marker.points[0])
+        self.bound_marker_pub.publish(marker)
+
+        marker = Marker()
+        marker.header.frame_id = 'world'
+        marker.ns = rospy.get_namespace()
+        marker.id = 2
+        marker.type = Marker.LINE_STRIP
+        marker.action = Marker.ADD
+        marker.pose = Pose(Point(), Quaternion(0, 0, 0, 1))
+        marker.scale = Vector3(0.05, 0, 0)
+        marker.color = ColorRGBA(1, 1, 0, 1)
+        marker.lifetime = rospy.Duration(0)
+        r = self.config['reduced_buffer']
+        shifts = [(r, r), (-r, r), (-r, -r), (r, -r)]
+        marker.points = [Point(p.x + s[0], p.y + s[1], 0) for p, s in zip(self.outer_bounds, shifts)]
+        marker.points.append(marker.points[0])
+        self.bound_marker_pub.publish(marker)
 
         return config
 

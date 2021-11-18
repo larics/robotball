@@ -4,8 +4,10 @@
 import tf2_ros
 import rospy
 import math
-from geometry_msgs.msg import TransformStamped, Quaternion, Vector3
+from tf.transformations import quaternion_multiply, euler_from_quaternion
+from geometry_msgs.msg import TransformStamped, Quaternion, Pose, Point
 from nav_msgs.msg import Odometry
+from sensor_msgs.msg import Imu
 
 from kalman_filter import KalmanFilter
 
@@ -38,18 +40,21 @@ class KalmanFilterNode(object):
         self.debug_enabled = rospy.get_param('/debug_kalman', False)
 
         self.X_est = None
+        self.yaw = 0
         self.filter = None
         self.initial_position = None
+        self.orientation = Quaternion()
 
-        # Create a publisher for commands
+        # Create a publisher.
         pub_odom = rospy.Publisher('odom_estimated', Odometry, queue_size=self.pub_frequency)
-        pub_vel = rospy.Publisher('vel_estimated', Vector3, queue_size=1)
+        pub_twist = rospy.Publisher('twist_estimated', Pose, queue_size=1)
         if self.debug_enabled:
             # Debug publisher runs at the same frequency as incoming data.
             self.debug_pub = rospy.Publisher('kalman_debug', Odometry, queue_size=1)
 
         # Subscriber for the sensor
         rospy.Subscriber('pozyx/measured', TransformStamped, self.sensor_callback, queue_size=1)
+        rospy.Subscriber('pozyx/imu', Imu, self.imu_callback, queue_size=1)
 
         # Get the initial positions of the robots.
         self.get_initial_position()  # Get initial position
@@ -67,17 +72,19 @@ class KalmanFilterNode(object):
         rate = rospy.Rate(self.pub_frequency)
         while not rospy.is_shutdown():
             self.X_est = self.filter.predict()
+            self.X_est.pose.pose.orientation = self.orientation
 
             t = TransformStamped()
             t.header.stamp = rospy.Time.now()
             t.header.frame_id = 'world'
             t.child_frame_id = rospy.get_namespace() + 'base_link'
             t.transform.translation = self.X_est.pose.pose.position
-            t.transform.rotation = Quaternion(0, 0, 0, 1)
+            t.transform.rotation = self.orientation
             br.sendTransform(t)
 
             pub_odom.publish(self.X_est)
-            pub_vel.publish(self.X_est.twist.twist.linear.x, self.X_est.twist.twist.linear.y, 0)
+            pub_twist.publish(Point(self.X_est.twist.twist.linear.x, self.X_est.twist.twist.linear.y, 0),
+                              self.orientation)
 
             rospy.logdebug(' x = % 7.5f', self.X_est.pose.pose.position.x)
             rospy.logdebug(' y = % 7.5f', self.X_est.pose.pose.position.y)
@@ -108,6 +115,14 @@ class KalmanFilterNode(object):
 
         if self.debug_enabled:
             self.debug_pub.publish(self.X_est)
+
+    def imu_callback(self, data):
+        q0 = (data.orientation.x, data.orientation.y, data.orientation.z, data.orientation.w)
+        q1 = (-0.5, -0.5, -0.5, 0.5)  # Transformation from Pozyx to IMU
+        q = quaternion_multiply(q0, q1)
+
+        self.yaw = euler_from_quaternion(q)[2]
+        self.orientation = Quaternion(*q)
 
 
 if __name__ == '__main__':

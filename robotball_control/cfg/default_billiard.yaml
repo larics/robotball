@@ -4,9 +4,9 @@ robots:
   # - robot_2
 
 limits:
-  x_left: 1
+  x_left: 1.5
   x_right: 5.5
-  y_bottom: 1
+  y_bottom: 1.5
   y_top: 9.5
   height: 10.5
   width: 6.5
@@ -17,3 +17,4 @@ config:
   reduced_buffer: 1
   out_samples: 20
   repulsion: 1
+  safe_dist: 1.5

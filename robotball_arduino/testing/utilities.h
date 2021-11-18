@@ -31,5 +31,9 @@ float fmap(float x, float in_min, float in_max, float out_min, float out_max)
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
+float fmap_exponential(float x, float in_min, float out_min, float out_max, float factor)
+{
+	return (out_max - out_min) * (pow(factor, -x + in_min)) + out_min;
+}
 
 #endif

@@ -144,7 +144,7 @@ class Driver(object):
             reset = rospy.ServiceProxy('serial_node/reset_arduino', Empty)
             try:
                 rospy.logwarn("Resetting arduino now!")
-                resp = reset()
+                reset()
             except rospy.ServiceException as exc:
                 rospy.logerr("Service did not process request: %s", exc)
 

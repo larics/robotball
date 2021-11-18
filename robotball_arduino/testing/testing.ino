@@ -1,6 +1,8 @@
 #include <ros.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/Vector3.h>
+#include <geometry_msgs/Quaternion.h>
+#include <geometry_msgs/Pose.h>
 #include <robotball_msgs/Odometry.h>
 #include <robotball_msgs/Status.h>
 #include <robotball_msgs/Debug.h>
@@ -67,6 +69,7 @@ double *g_speed_used = &g_speed_odom;
 double g_pitch;
 double g_roll;
 double g_hdg;
+geometry_msgs::Quaternion g_quat_extern;
 double g_hdg_offset;
 
 double g_vel_lin;
@@ -158,14 +161,15 @@ void dynReconfCb (const robotball_msgs::DynReconf& msg) {
 }
 ros::Subscriber<robotball_msgs::DynReconf> reconf_sub("dyn_reconf", &dynReconfCb);
 
-void externVelCb (const geometry_msgs::Vector3& msg) {
-    float x = msg.x;
-    float y = msg.y;
+void externCb (const geometry_msgs::Pose& msg) {
+    float x = msg.position.x;  // It says position but it's actually speed.
+    float y = msg.position.y;
 
     g_speed_extern = sqrt(x*x + y*y);
+    g_quat_extern = msg.orientation;
 
 }
-ros::Subscriber<geometry_msgs::Vector3> vel_sub("vel_estimated", &externVelCb);
+ros::Subscriber<geometry_msgs::Pose> extern_sub("twist_estimated", &externCb);
 
 
 Timer<4, millis> timer;
@@ -181,13 +185,34 @@ void publish_odom() {
 void publish_status() {
     /* Get the robot status */
     // status_msg.battery = analogRead(bat_pin);
+    status_msg.memory = freeMemory();
     status_pub.publish(&status_msg);
 }
 
 void publih_debug() {
     debug_pub.publish(&debug_msg);
 }
+
 /******************************************************************************/
+
+
+#ifdef __arm__
+// should use uinstd.h to define sbrk but Due causes a conflict
+extern "C" char* sbrk(int incr);
+#else  // __ARM__
+extern char *__brkval;
+#endif  // __arm__
+
+int freeMemory() {
+  char top;
+#ifdef __arm__
+  return &top - reinterpret_cast<char*>(sbrk(0));
+#elif defined(CORE_TEENSY) || (ARDUINO > 103 && ARDUINO != 151)
+  return &top - __brkval;
+#else  // __arm__
+  return __brkval ? &top - __brkval : &top - __malloc_heap_start;
+#endif  // __arm__
+}
 
 void setup ()
 {
@@ -204,7 +229,7 @@ void setup ()
     nh.advertise(status_pub);
     nh.subscribe(cmd_sub);
     nh.subscribe(reconf_sub);
-    nh.subscribe(vel_sub);
+    nh.subscribe(extern_sub);
     nh.spinOnce();
 
     timer.every(1.0 / 1  * 1000, publish_status);
@@ -237,7 +262,7 @@ void setup ()
     while (valid_count < 20)
     {
         bno.getCalibration(&system, &gyro, &accel, &mag);
-        valid_count = valid_count * (system > 0) + 1;
+        valid_count = valid_count * (system == 3 && gyro == 3 && mag == 3) + 1;
         status_msg.calibration = 10000 + system * 1000 + gyro * 100 + accel * 10 + mag;
         status_pub.publish(&status_msg);
         nh.spinOnce();
@@ -270,13 +295,25 @@ void loop() {
     /* ---------- */
 
 
-    /* Get the latest orientation data. */
-    imu::Quaternion quat = bno.getQuat();
-    // IMU is mounted differently from its default orientation. In order to
-    // avoid singularities at certain angles, we need to rotate the measured
-    // quaternion before converting it to euler. We do that by multiplying it
-    // with the magic quaternion below.
-    quat = quat * rot_offset;
+    /* Get the latest orientation data from IMU or externally as a backup. */
+    imu::Quaternion quat;
+    if (status_msg.calibration == 90000)
+    {
+        nh.logwarn("Lost IMU calibration!");
+        quat.w() = g_quat_extern.w;
+        quat.x() = g_quat_extern.x;
+        quat.y() = g_quat_extern.y;
+        quat.z() = g_quat_extern.z;
+    }
+    else
+    {
+        quat = bno.getQuat();
+        // IMU is mounted differently from its default orientation. In order to
+        // avoid singularities at certain angles, we need to rotate the measured
+        // quaternion before converting it to euler. We do that by multiplying it
+        // with the magic quaternion below.
+        quat = quat * rot_offset;
+    }
     // Axis on the IMU are wierdly flipped so we also need to flip x and z
     // axis for rotation. When all values are zero, the robot is in neutral
     // orientation and pointing towards east. */
@@ -308,12 +345,14 @@ void loop() {
         float hdg_err = fabs(g_hdg - g_hdg_sp);
         if (PID_speed_enabled)
         {
-            float limit_speed_sp = fmap(hdg_err, 0, PI, g_speed_scale, 0);
+            // float limit_speed_sp = fmap(hdg_err, 0, PI, g_speed_scale, 0);
+            float limit_speed_sp = fmap_exponential(hdg_err, 0, 0, g_speed_scale, 10);
             g_speed_sp = constrain(g_speed_sp, -limit_speed_sp, limit_speed_sp);
         }
         else
         {
-            float limit_vel_lin = fmap(hdg_err, 0, PI, 1, 0);
+            // float limit_vel_lin = fmap(hdg_err, 0, PI, 1, 0);
+            float limit_vel_lin = fmap_exponential(hdg_err, 0, 0, 1, 10);
             g_vel_lin = constrain(g_vel_lin, -limit_vel_lin, limit_vel_lin);
         }
     }
