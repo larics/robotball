@@ -29,8 +29,10 @@ class Driver(object):
         self.first_pass = True
         self.mode_manual = True
         self.latest_config = None
+        self.enabled = True
 
         self.position = Vector3()
+        self.last_direction = 0
 
         rospy.sleep(1)
 
@@ -91,14 +93,19 @@ class Driver(object):
         calibration = str(data.calibration)
         if calibration[0] == '1':
             rospy.loginfo("Calibraton status> SYS: %s, GYR: %s, ACC: %s, MAG: %s", *calibration[1:])
-        elif calibration[0] == '9':
+        elif calibration[0] == '9' and calibration[1:] != '0000':
             rospy.loginfo_once("Calibraton complete.")
+        else:
+            rospy.logwarn("Lost connection to the IMU!")
 
         # Battery status
         # TODO
 
     def joy_callback(self, data):
         """Receive inputs from joystick."""
+
+        if not self.enabled:
+            return
 
         # Green "A" button: Toggle automatic and manual mode.
         if data.buttons[1]:
@@ -117,7 +124,6 @@ class Driver(object):
         # Right stick: Gradual direction inputs.
         if data.axes[2] != 0 or data.axes[3] != 0:
             direction = wrap_pi_pi(math.atan2(data.axes[3], -data.axes[2]))
-            self.last_direction = direction
         # D-pad: Step direction inputs.
         else:
             if data.axes[4] == 1:
@@ -125,7 +131,8 @@ class Driver(object):
             elif data.axes[4] == -1:
                 direction = -math.pi / 2
             else:
-                direction = 0
+                direction = self.last_direction
+        self.last_direction = direction
 
         # Package the commanded velocity message.
         # Blue "X" button: Reset odometry.
@@ -164,6 +171,8 @@ class Driver(object):
             hdg_P: {hdg_P}
             hdg_I: {hdg_I}
             hdg_D: {hdg_D}
+
+            joystick: {joystick}
             """.format(**config))
 
         msg = DynReconf()
@@ -181,6 +190,8 @@ class Driver(object):
         msg.hdg.D = config['hdg_D']
         msg.hdg_offset = config['offset']
         self.dyn_reconf_pub.publish(msg)
+
+        self.enabled = config['joystick']
         self.latest_config = msg
 
         # Store PID values

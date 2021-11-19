@@ -18,7 +18,7 @@ class KalmanFilter(object):
 
         T = step_time
         self.X0 = self.get_numpy_state(position, velocity)
-        self.P0 = 1e-3 * np.eye(4)
+        self.P0 = np.diag([0.09, 0.09, 1e-6, 1e-6])
 
         q = 9
         self.Q_init = np.diag([q, q, q, q])

@@ -47,6 +47,7 @@ class BilliardController(object):
                   (limits['x_left'], limits['y_top'])]
         self.outer_bounds = [Point(x, y, 0) for x, y in points]
         self.bound_marker_pub = rospy.Publisher('/limits_viz', Marker, queue_size=1)
+        self.marker_color = ColorRGBA(0, 1, 1, 1)
 
         # Visaulization marker for velocity vector
         marker = Marker()
@@ -135,6 +136,7 @@ class BilliardController(object):
                 cmd_vector.set_angle(direction.arg())
                 out_of_limits_x = 0
                 out_of_limits_y = 0
+            self.marker_color = ColorRGBA(0, 1, 1, 1)
 
             # AVOID
             prev_speed = cmd_vector.norm()
@@ -146,6 +148,7 @@ class BilliardController(object):
                     delta = Vector2(delta_x, delta_y)
                     if delta.norm() < self.config['safe_dist']:
                         res_vector = res_vector + delta * self.config['repulsion']
+                        self.marker_color = ColorRGBA(1, 0.5, 0, 1)
 
             res_vector.set_mag(prev_speed)
             cmd_vel_msg.linear.x = res_vector.norm()
@@ -162,6 +165,7 @@ class BilliardController(object):
             marker.pose.position.y = self.poses[self.me].y
             marker.pose.orientation = angle
             marker.scale = scale
+            marker.color = self.marker_color
             self.marker_pub.publish(marker)
 
             r.sleep()

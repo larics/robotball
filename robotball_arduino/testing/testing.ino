@@ -280,6 +280,7 @@ void setup ()
 
     /* Ready to start the main loop. */
     last_cmd_vel = millis();
+    g_quat_extern.w = 1;
 
 }
 
@@ -299,7 +300,6 @@ void loop() {
     imu::Quaternion quat;
     if (status_msg.calibration == 90000)
     {
-        nh.logwarn("Lost IMU calibration!");
         quat.w() = g_quat_extern.w;
         quat.x() = g_quat_extern.x;
         quat.y() = g_quat_extern.y;
@@ -339,25 +339,6 @@ void loop() {
         else g_hdg_sp -= 2 * PI;
     }
 
-    /* Limit the speed setpoint in large turns to avoid excessive rolling. */
-    if (PID_hdg.GetMode() == AUTOMATIC)
-    {
-        float hdg_err = fabs(g_hdg - g_hdg_sp);
-        if (PID_speed_enabled)
-        {
-            // float limit_speed_sp = fmap(hdg_err, 0, PI, g_speed_scale, 0);
-            float limit_speed_sp = fmap_exponential(hdg_err, 0, 0, g_speed_scale, 10);
-            g_speed_sp = constrain(g_speed_sp, -limit_speed_sp, limit_speed_sp);
-        }
-        else
-        {
-            // float limit_vel_lin = fmap(hdg_err, 0, PI, 1, 0);
-            float limit_vel_lin = fmap_exponential(hdg_err, 0, 0, 1, 10);
-            g_vel_lin = constrain(g_vel_lin, -limit_vel_lin, limit_vel_lin);
-        }
-    }
-    /* ---------- */
-
 
     /* Get the latest odometry data. */
     double angular_odom;
@@ -385,8 +366,7 @@ void loop() {
     /* ---------- */
 
 
-    /* Compute all PID outputs */
-    // Select the current mode (pitch controller or speed controller active).
+    /* Select the current mode (pitch controller or speed controller active). */
     if (mode == MODE_STABLE)
     {
         if ((PID_speed_enabled && g_speed_sp != 0) || (!PID_speed_enabled && g_vel_input != 0))
@@ -398,7 +378,7 @@ void loop() {
     }
     else  // mode == MODE_DRIVE
     {
-        g_vel_lin = g_vel_input;
+        g_vel_lin = g_vel_input; // We can't send input directly to lin because it might be overriden by pitch controller.
         if ((PID_speed_enabled && g_speed_sp == 0) || (!PID_speed_enabled && g_vel_input == 0))
         {
             if (g_speed_odom < 0.05)
@@ -409,9 +389,33 @@ void loop() {
             }
         }
     }
+    /* ---------- */
 
 
-    // Compute the outputs. Inactive controllers are automatically skipped.
+    /* Limit the speed setpoint in large turns to avoid excessive rolling. */
+    if (PID_hdg.GetMode() == AUTOMATIC)
+    {
+        float hdg_err = fabs(g_hdg - g_hdg_sp);
+        if (PID_speed_enabled)
+        {
+            // float limit_speed_sp = fmap(hdg_err, 0, PI, g_speed_scale, 0);
+            float limit_speed_sp = fmap_exponential(hdg_err, 0, 0, g_speed_scale, 2);
+            g_speed_sp = constrain(g_speed_sp, -limit_speed_sp, limit_speed_sp);
+        }
+        else
+        {
+            // float limit_vel_lin = fmap(hdg_err, 0, PI, 1, 0);
+            float limit_vel_lin = fmap_exponential(hdg_err, 0, 0, 1, 2);
+            g_vel_lin = constrain(g_vel_lin, -limit_vel_lin, limit_vel_lin);
+        }
+        // float limit_hdg_output = fmap_exponential(g_speed_odom, 0, 0, 1, 10);
+        // PID_hdg.SetOutputLimits(-limit_hdg_output, limit_hdg_output);
+    }
+    /* ---------- */
+
+
+    /* Compute all PID outputs.  */
+    // Inactive controllers are automatically skipped.
     PID_hdg.Compute();
     PID_speed.Compute();
     PID_pitch.Compute();
