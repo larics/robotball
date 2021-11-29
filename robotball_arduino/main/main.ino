@@ -123,7 +123,7 @@ void cmdVelCb (const geometry_msgs::Twist& cmd_vel) {
         g_hdg_sp = cmd_vel.linear.y;
     else
         // Joystick commands the rotational part of motor mixer directly.
-        g_vel_rot = cmd_vel.linear.y / (PI);
+        g_vel_rot = cmd_vel.linear.y;
 
     if (PID_speed_enabled)
         // Speed controller is active. Joystick commands the desired speed.

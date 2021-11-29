@@ -5,11 +5,10 @@ import rospy
 import tf2_ros
 import tf_conversions as tfc
 
-from tf.transformations import quaternion_from_euler
 from std_srvs.srv import Empty
 from sensor_msgs.msg import Joy
 from geometry_msgs.msg import Twist, Vector3, TransformStamped
-from robotball_msgs.msg import Odometry, IMU, Status, Debug, DynReconf
+from robotball_msgs.msg import Odometry, IMU, Status, DynReconf
 
 from dynamic_reconfigure.server import Server
 from dynamic_reconfigure.client import Client
@@ -29,7 +28,6 @@ class Driver(object):
         self.first_pass = True
         self.mode_manual = True
         self.latest_config = None
-        self.enabled = True
 
         self.position = Vector3()
         self.last_direction = 0
@@ -104,7 +102,7 @@ class Driver(object):
     def joy_callback(self, data):
         """Receive inputs from joystick."""
 
-        if not self.enabled:
+        if not self.latest_config['joystick']:
             return
 
         # Green "A" button: Toggle automatic and manual mode.
@@ -112,27 +110,29 @@ class Driver(object):
             self.mode_manual = not self.mode_manual
             rospy.loginfo("Switched to %s mode.", "MANUAL" if self.mode_manual else "AUTOMATIC")
 
+        # Left stick: Gradual speed inputs.
+        magnitude = data.axes[1]
+        if not self.latest_config['hdg_enabled']:
+            direction = data.axes[0]
         # D-pad: Step speed inputs.
         if data.axes[5] == 1:
             magnitude = 30 / 45
         elif data.axes[5] == -1:
             magnitude = -30 / 45
-        # Left stick: Gradual speed inputs.
-        else:
-            magnitude = data.axes[1]
 
-        # Right stick: Gradual direction inputs.
-        if data.axes[2] != 0 or data.axes[3] != 0:
-            direction = wrap_pi_pi(math.atan2(data.axes[3], -data.axes[2]))
-        # D-pad: Step direction inputs.
-        else:
-            if data.axes[4] == 1:
-                direction = math.pi / 2
-            elif data.axes[4] == -1:
-                direction = -math.pi / 2
+        if self.latest_config['hdg_enabled']:
+            # Right stick: Gradual direction inputs.
+            if data.axes[2] != 0 or data.axes[3] != 0:
+                direction = wrap_pi_pi(math.atan2(data.axes[3], -data.axes[2]))
+            # D-pad: Step direction inputs.
             else:
-                direction = self.last_direction
-        self.last_direction = direction
+                if data.axes[4] == 1:
+                    direction = math.pi / 2
+                elif data.axes[4] == -1:
+                    direction = -math.pi / 2
+                else:
+                    direction = self.last_direction
+            self.last_direction = direction
 
         # Package the commanded velocity message.
         # Blue "X" button: Reset odometry.
