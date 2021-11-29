@@ -1,5 +1,5 @@
 robot_0:
-  generator:
+  ref_generator:
     a: 1
     b: 1
     A: 0.88
@@ -11,7 +11,7 @@ robot_0:
     Sync: True
 
 robot_1:
-  generator:
+  ref_generator:
     a: 1
     b: 1
     A: 0.88
@@ -23,7 +23,7 @@ robot_1:
     Sync: True
 
 robot_2:
-  generator:
+  ref_generator:
     a: 1
     b: 1
     A: 0.88
@@ -35,7 +35,7 @@ robot_2:
     Sync: True
 
 robot_3:
-  generator:
+  ref_generator:
     a: 1
     b: 2
     A: 0.88
@@ -47,7 +47,7 @@ robot_3:
     Sync: True
 
 robot_4:
-  generator:
+  ref_generator:
     a: 1
     b: 3
     A: 0.88

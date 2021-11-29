@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 """
@@ -6,7 +5,6 @@ This module is used for utility and helper functions.
 
 Classes:
     Vector2: 2D vector class representation with x and y components
-    MarkerSet: convenience class for handling interactive Rviz markers
 
 Function:
     pose_dist: calculate distance between two ROS Pose type variables

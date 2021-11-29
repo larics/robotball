@@ -35,7 +35,7 @@ class RefTracker(object):
         # Dynamic reconfigure server.
         Server(FollowerConfig, self.reconf_cb)
 
-        # Visaulization marker
+        # Visualization marker
         marker = Marker()
         marker.ns = rospy.get_namespace()
         marker.header.frame_id = rospy.get_namespace() + 'base_link'
@@ -43,7 +43,7 @@ class RefTracker(object):
         marker.action = Marker.ADD
         marker.color = ColorRGBA(0, 1, 1, 1)
         marker.pose = Pose()
-        marker.pose.position.z = 0.1776  # Sphero radius
+        marker.pose.position.z = 0.1776  # Robotball radius
         marker.lifetime = rospy.Duration(0)
         marker.frame_locked = True
         self.marker_pub = rospy.Publisher('cmd_viz', Marker, queue_size=1)
@@ -88,15 +88,6 @@ class RefTracker(object):
         self.pid_limit = config['lim']
 
         return config
-
-    def get_relative_motion(self):
-        pos_new = self.odom.pose.pose.position
-        pos_old = self.odom_old.pose.pose.position
-
-        dist = math.sqrt((pos_new.x - pos_old.x) ** 2 + (pos_new.y - pos_old.y) ** 2)
-        angle = math.atan2(pos_new.y - pos_old.y, pos_new.x - pos_old.x)
-
-        return dist, angle
 
     def compute(self):
         cmd_vel = Twist()
