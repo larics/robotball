@@ -8,10 +8,8 @@ project(robotball_driver)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  roscpp
   rospy
   message_generation
-  geometry_msgs
 )
 
 find_package(catkin REQUIRED dynamic_reconfigure)
@@ -106,7 +104,7 @@ generate_dynamic_reconfigure_options(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES robotball_driver
- CATKIN_DEPENDS message_runtime geometry_msgs
+ CATKIN_DEPENDS message_runtime
 #  DEPENDS system_lib
 )
 

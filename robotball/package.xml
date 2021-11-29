@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>robotball_localization</name>
+  <name>robotball</name>
   <version>0.1.0</version>
-  <description>Localization package for spherical robot by LARICS and TU Delft.</description>
+  <description>The metapackage for spherical robot by LARICS and TU Delft.</description>
 
   <maintainer email="marko.krizmancic@fer.hr">Marko Krizmancic</maintainer>
 
@@ -12,12 +12,16 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
-  <depend>rospy</depend>
+  <exec_depend>robotball_driver</exec_depend>
+  <exec_depend>robotball_control</exec_depend>
+  <exec_depend>robotball_localization</exec_depend>
+  <exec_depend>robotball_msgs</exec_depend>
+  <exec_depend>robotball_simulation</exec_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
-    <!-- Other tools can request additional information be placed here -->
-
+    <metapackage />
   </export>
+
 </package>

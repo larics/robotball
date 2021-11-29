@@ -1,26 +1,18 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>robotball_driver</name>
-  <version>0.0.1</version>
-  <description>Driver for the robot ball by LARICS and TU Delft</description>
+  <version>0.1.0</version>
+  <description>Driver for the spherical robot by LARICS and TU Delft.</description>
 
   <maintainer email="marko.krizmancic@fer.hr">Marko Krizmancic</maintainer>
 
-  <license>MIT</license>
-
-
-  <!-- Url tags are optional, but multiple are allowed, one per tag -->
-  <!-- Optional attribute type can be: website, bugtracker, or repository -->
-  <!-- Example: -->
-  <!-- <url type="website">http://wiki.ros.org/robotball_driver</url> -->
-
   <author email="marko.krizmancic@fer.hr">Marko Krizmancic</author>
+
+  <license>MIT</license>
 
   <buildtool_depend>catkin</buildtool_depend>
 
-  <depend>roscpp</depend>
   <depend>rospy</depend>
-  <depend>geometry_msgs</depend>
 
   <build_depend>message_generation</build_depend>
   <exec_depend>message_runtime</exec_depend>
