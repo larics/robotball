@@ -69,6 +69,7 @@ class DiffDriveOdom
         int8_t lDir_;
         int8_t rDir_;
 
+        // Odometry calibration parameters
         float k1_;
         float k2_;
         float k3_;

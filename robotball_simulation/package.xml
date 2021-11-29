@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>robotball_simulation</name>
+  <version>0.1.0</version>
+  <description>Simulation package for spherical robot by LARICS and TU Delft.</description>
+
+  <maintainer email="marko.krizmancic@fer.hr">Marko Krizmancic</maintainer>
+
+  <author email="marko.krizmancic@fer.hr">Marko Krizmancic</author>
+
+  <license>MIT</license><buildtool_depend>catkin</buildtool_depend>
+
+  <depend>rospy</depend>
+
+
+  <!-- The export tag contains other, unspecified, tags -->
+  <export>
+    <!-- Other tools can request additional information be placed here -->
+
+  </export>
+</package>
