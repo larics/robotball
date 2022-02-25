@@ -11,7 +11,7 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist, Pose2D, Vector3, Quaternion, Pose
 from visualization_msgs.msg import Marker
 
-from robotball_path.cfg import FollowerConfig
+from robotball_control.cfg import FollowerConfig
 
 from pid import PID
 

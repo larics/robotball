@@ -10,7 +10,7 @@ from geometry_msgs.msg import Pose2D, Vector3, Quaternion, Point
 from nav_msgs.msg import Odometry
 from visualization_msgs.msg import Marker
 
-from robotball_path.cfg import GeometricGeneratorConfig
+from robotball_control.cfg import GeometricGeneratorConfig
 
 
 def make_shape(N, yaw, scale, C, D):

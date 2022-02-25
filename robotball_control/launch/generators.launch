@@ -2,16 +2,16 @@
   <env name="ROSCONSOLE_FORMAT" value="[${severity}] [${node}]> ${message}"/>
 
   <arg name="num" default="1"/>
-  <arg name="type" default="geometric"/>
+  <arg name="type" default="lissajous"/>
   <arg name="setup" default="default"/>
 
-  <node pkg="robotball_path" type="$(arg type)_reference_generator.py" ns="$(env NAMESPACE)" name="ref_generator" output="screen"/>
-  <node pkg="robotball_path" type="reference_follower.py" ns="$(env NAMESPACE)" name="ref_follower" output="screen"/>
+  <node pkg="robotball_control" type="$(arg type)_reference_generator.py" ns="$(env NAMESPACE)" name="ref_generator" output="screen"/>
+  <node pkg="robotball_control" type="reference_follower.py" ns="$(env NAMESPACE)" name="ref_follower" output="screen"/>
 
   <!-- Set default parameters. -->
   <param name="num_of_robots" type="int" value="$(arg num)"/>
-  <rosparam command="load" file="$(find robotball_path)/cfg/$(type)/$(arg setup).yaml"/>
-  <rosparam command="load" file="$(find robotball_path)/cfg/default_pid.yaml"/>
+  <rosparam command="load" file="$(find robotball_control)/cfg/$(arg type)/$(arg setup).yaml"/>
+  <rosparam command="load" file="$(find robotball_control)/cfg/default_pid.yaml"/>
 
   <param name="robot_description" textfile="$(find robotball_simulation)/resources/simple_ball.urdf"/>
 

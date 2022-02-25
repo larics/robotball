@@ -13,7 +13,7 @@ from geometry_msgs.msg import Pose2D, Vector3, Quaternion, Point
 from std_msgs.msg import ColorRGBA, Bool
 from visualization_msgs.msg import Marker
 
-from robotball_path.cfg import LissajousGeneratorConfig
+from robotball_control.cfg import LissajousGeneratorConfig
 
 
 def lissajous(t, config, scale=1):
