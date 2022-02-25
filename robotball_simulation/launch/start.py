@@ -1,6 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from __future__ import print_function, division
 import os
 import sys
 import math
@@ -23,12 +22,14 @@ def distribute_line(k, n, center_x=0, center_y=0, separation=0.5, direction='hor
         y = center_y + (k - (n - 1) // 2) * separation
     return x, y
 
-def create_files(resources, config):
+def create_files(package, config):
+    resources = package + '/resources'
     map_name = config['map_name']
     num_of_robots = config['num_of_robots']
     distribution = config['distribution']
     params = config['distribution_list'][distribution]
 
+    # Files for simulation.
     template_file = "{}/world_templates/{}.temp".format(resources, map_name)
     new_map_file  = "{}/worlds/{}_{}.world".format(resources, map_name, num_of_robots)
 
@@ -49,6 +50,17 @@ def create_files(resources, config):
             args = {'x': x, 'y': y, 'k': k, 'color': 'blue'}
             output.write(proto_line.format(**args))
 
+    # Luanch files.
+    launch = package + '/launch'
+    new_launch_file = "{}/fake_robots.xml".format(launch)
+    with open(new_launch_file, 'w') as output:
+        output.write('<launch>\n')
+
+        for i in range(num_of_robots):
+            output.write(f'  <node pkg="robotball_simulation" type="fake_robot.py" name="fake_robot" ns="robot_{i}"/>\n')
+
+        output.write('</launch>')
+
     return True
 
 
@@ -57,7 +69,6 @@ def main():
 
     # Set up launch variables. These are hard-coded and they shouldn't be changed.
     package = rospkg.RosPack().get_path('robotball_simulation')
-    resources = package + '/resources'
     with open(package + '/launch/launch_params.yaml', 'r') as stream:
         config = yaml.full_load(stream)
     num_of_robots = config['num_of_robots']
@@ -69,7 +80,7 @@ def main():
 
     # Create a world file from template using the same name and specified number of robots.
     print("\033[36m \nCreating world file with {} robots and map '{}'.\033[0m".format(num_of_robots, map_name))
-    if not create_files(resources, config):
+    if not create_files(package, config):
         return
 
     print("\033[36mCalling the setup launch file. \033[0m")

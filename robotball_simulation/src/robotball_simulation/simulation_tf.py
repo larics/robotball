@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
@@ -20,7 +20,7 @@ def callback(msg):
     try:
         tf = geometry_msgs.msg.TransformStamped()
         tf.child_frame_id = msg.header.frame_id
-        tf.header.frame_id = "map"
+        tf.header.frame_id = "world"
         tf.header.stamp = msg.header.stamp
 
         tf.transform.translation.x = 0

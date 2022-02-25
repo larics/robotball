@@ -1,0 +1,3 @@
+<launch>
+  <node pkg="robotball_simulation" type="fake_robot.py" name="fake_robot" ns="robot_0"/>
+</launch>
