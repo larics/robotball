@@ -229,7 +229,7 @@ Thumbs.db
 
 
 ### vscode ###
-.vscode/*
+.vscode/
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
@@ -237,3 +237,5 @@ Thumbs.db
 *.code-workspace
 
 # End of https://www.toptal.com/developers/gitignore/api/python,pycharm,vscode,c++
+
+robotball_control.zip
