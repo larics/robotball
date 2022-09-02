@@ -28,6 +28,7 @@ class Driver(object):
         self.first_pass = True
         self.mode_manual = True
         self.latest_config = None
+        self.enabled = False
 
         self.position = Vector3()
         self.last_direction = 0
@@ -102,7 +103,7 @@ class Driver(object):
     def joy_callback(self, data):
         """Receive inputs from joystick."""
 
-        if not self.latest_config['joystick']:
+        if not self.enabled:
             return
 
         # Green "A" button: Toggle automatic and manual mode.
@@ -112,7 +113,7 @@ class Driver(object):
 
         # Left stick: Gradual speed inputs.
         magnitude = data.axes[1]
-        if not self.latest_config['hdg_enabled']:
+        if not self.latest_config.hdg.enabled:
             direction = data.axes[0]
         # D-pad: Step speed inputs.
         if data.axes[5] == 1:
@@ -120,7 +121,7 @@ class Driver(object):
         elif data.axes[5] == -1:
             magnitude = -30 / 45
 
-        if self.latest_config['hdg_enabled']:
+        if self.latest_config.hdg.enabled:
             # Right stick: Gradual direction inputs.
             if data.axes[2] != 0 or data.axes[3] != 0:
                 direction = wrap_pi_pi(math.atan2(data.axes[3], -data.axes[2]))
