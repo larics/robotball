@@ -441,7 +441,7 @@ void loop() {
     vel_right = g_vel_lin + g_vel_rot;
 
     debug_msg.vel.left = g_vel_lin;
-    debug_msg.vel.right = g_vel_lin;
+    debug_msg.vel.right = g_vel_rot;
 
     double scale_factor = 1.0;
     double abs_left = fabs(vel_left);
