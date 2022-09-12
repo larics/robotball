@@ -259,13 +259,21 @@ void setup ()
     system = gyro = accel = mag = 0;
     // The data should be ignored until the system calibration is > 0.
     int valid_count = 0;
+    double vel_left, vel_right;
     while (valid_count < 20)
     {
+        nh.spinOnce();
+
+        // Control manually during calibration
+        vel_left = g_vel_input - g_vel_rot;
+        vel_right = g_vel_input + g_vel_rot;
+        motor_left.setSpeed(l_motor_sign * vel_left * 255);  
+        motor_right.setSpeed(r_motor_sign * vel_right * 255);
+        
         bno.getCalibration(&system, &gyro, &accel, &mag);
         valid_count = valid_count * (system == 3 && gyro == 3 && mag == 3) + 1;
         status_msg.calibration = 10000 + system * 1000 + gyro * 100 + accel * 10 + mag;
         status_pub.publish(&status_msg);
-        nh.spinOnce();
         delay(50);
     }
     status_msg.calibration = 90000 + system * 1000 + gyro * 100 + accel * 10 + mag;
