@@ -3,7 +3,7 @@ tags:
     name: 'robot_1'
   - id: ''
     name: 'robot_2'
-  # - id: ''
-  #   name: 'robot_3'
+  - id: ''
+    name: 'robot_3'
 
 

@@ -1,13 +1,13 @@
 robots:
   - robot_1
   - robot_2
-  # - robot_3
+  - robot_3
 
 limits:
-  x_left: 1.5
-  x_right: 4.5
-  y_bottom: 1.5
-  y_top: 8.5
+  x_left: 0.75
+  x_right: 5.25
+  y_bottom: 0.75
+  y_top: 9.25
   height: 10
   width: 6
 
