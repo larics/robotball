@@ -40,19 +40,6 @@ root: ~/
 # attach: false
 
 windows:
-  - run:
-      layout: tiled
-      # Synchronize all panes of this window, can be enabled before or after the pane commands run.
-      # 'before' represents legacy functionality and will be deprecated in a future release, in favour of 'after'
-      # synchronize: after
-      panes:
-        - pozyx:
-          - history -s roslaunch robotball_localization remote_scheduler.launch
-          - " clear"
-        - billiard:
-          - history -s roslaunch robotball_bringup global.launch
-          - " clear"
-
   - setup:
       layout: tiled
       # Synchronize all panes of this window, can be enabled before or after the pane commands run.
@@ -67,3 +54,16 @@ windows:
           - waitForRos; rosrun rqt_reconfigure rqt_reconfigure
         - rviz:
           - waitForRos; rviz
+
+  - run:
+      layout: tiled
+      # Synchronize all panes of this window, can be enabled before or after the pane commands run.
+      # 'before' represents legacy functionality and will be deprecated in a future release, in favour of 'after'
+      # synchronize: after
+      panes:
+        - pozyx:
+          - history -s roslaunch robotball_localization remote_scheduler.launch
+          - " clear"
+        - billiard:
+          - history -s roslaunch robotball_bringup global.launch
+          - " clear"

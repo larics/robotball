@@ -7,13 +7,13 @@ limits:
   x_left: 0.75
   x_right: 5.25
   y_bottom: 0.75
-  y_top: 9.25
-  height: 10
+  y_top: 9.75
+  height: 10.5
   width: 6
 
 config:
-  set_speed: 0.5
-  reduced_speed: 0.3
+  set_speed: 0.6
+  reduced_speed: 0.4
   reduced_buffer: 1
   out_samples: 20
   repulsion: 1
