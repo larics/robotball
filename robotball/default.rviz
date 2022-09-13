@@ -7,7 +7,6 @@ Panels:
         - /Global Options1
         - /Status1
         - /TF1
-        - /TF1/Frames1
         - /Limits1
       Splitter Ratio: 0.6499999761581421
     Tree Height: 719
@@ -73,11 +72,11 @@ Visualization Manager:
           Value: true
         All Enabled: false
         odom:
-          Value: true
+          Value: false
         pozyx:
-          Value: true
+          Value: false
         robot_1/IMU:
-          Value: true
+          Value: false
         robot_1/base_link:
           Value: true
         robot_1/tag:
@@ -85,12 +84,20 @@ Visualization Manager:
         robot_1/wheelbase:
           Value: false
         robot_2/IMU:
-          Value: true
+          Value: false
         robot_2/base_link:
           Value: true
         robot_2/tag:
           Value: false
         robot_2/wheelbase:
+          Value: false
+        robot_3/IMU:
+          Value: false
+        robot_3/base_link:
+          Value: true
+        robot_3/tag:
+          Value: false
+        robot_3/wheelbase:
           Value: false
         world:
           Value: true
@@ -119,9 +126,13 @@ Visualization Manager:
               {}
             robot_2/tag:
               {}
+            robot_3/tag:
+              {}
           robot_1/base_link:
             {}
           robot_2/base_link:
+            {}
+          robot_3/base_link:
             {}
       Update Interval: 0
       Value: true
@@ -130,8 +141,7 @@ Visualization Manager:
       Marker Topic: /limits_viz
       Name: Limits
       Namespaces:
-        /robot_1/: true
-        /robot_2/: true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -148,6 +158,14 @@ Visualization Manager:
       Name: Robot_2
       Namespaces:
         /robot_2/: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /robot_3/cmd_viz
+      Name: Robot_3
+      Namespaces:
+        /robot_3/: true
       Queue Size: 100
       Value: true
   Enabled: true
@@ -177,26 +195,20 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Class: rviz/Orbit
-      Distance: 15.8358736038208
+      Angle: 0
+      Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
-      Field of View: 0.7853981852531433
-      Focal Point:
-        X: 4.329225063323975
-        Y: 5.018926620483398
-        Z: 2.2301464080810547
-      Focal Shape Fixed Size: true
-      Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.4503973722457886
+      Scale: 76.01689147949219
       Target Frame: <Fixed Frame>
-      Yaw: 4.718578815460205
+      X: 4.784977436065674
+      Y: 5.3423919677734375
     Saved: ~
 Window Geometry:
   Displays:
