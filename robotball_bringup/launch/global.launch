@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="robotball_driver" type="global_driver_reconf.py" name="global_driver_reconf" output="screen"/>
+    <node pkg="robotball_control" type="global_billiard_reconf.py" name="global_billiard_reconf" output="screen"/>
+</launch>
