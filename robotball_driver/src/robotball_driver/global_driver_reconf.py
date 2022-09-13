@@ -1,34 +1,18 @@
 #!/usr/bin/env python3
 
-import math
 import rospy
-import tf2_ros
-import tf_conversions as tfc
 
-from std_srvs.srv import Empty
-from sensor_msgs.msg import Joy
-from geometry_msgs.msg import Twist, Vector3, TransformStamped
-from robotball_msgs.msg import Odometry, IMU, Status, DynReconf
 
 from dynamic_reconfigure.server import Server
 from dynamic_reconfigure.client import Client
+from dynamic_reconfigure import DynamicReconfigureCallbackException
 from robotball_driver.cfg import GlobalDriverConfig
 
 
 class GlobalDriverReconf(object):
     def __init__(self):
-        self.first_pass = True
-        self.mode_manual = True
-        self.latest_config = None
-        self.enabled = False
-
-        self.position = Vector3()
-        self.last_direction = 0
-
-        rospy.sleep(1)
-
         # Dynamic reconfigure server for PID tuning
-        self.clients = [Client(f'/robot_{i}/driver', timeout=2.0) for i in range(1, 4)]
+        self.clients = {f'robot_{i}': Client(f'/robot_{i}/driver') for i in range(1, 4)}
         self.server = Server(GlobalDriverConfig, self.reconfigure_callback)
 
         rospy.spin()
@@ -41,9 +25,12 @@ class GlobalDriverReconf(object):
             offset: {offset}
             """.format(**config))
 
-        for i, client in enumerate(self.clients, start=1):
-            client.update_configuration({"joystick": config[f'robot_{i}'],
-                                         "offset": config['offset']})
+        for name, client in self.clients.items():
+            try:
+                client.update_configuration({"joystick": config[f'{name}'],
+                                            "offset": config['offset']})
+            except DynamicReconfigureCallbackException as e:
+                rospy.logerr(f"DynReconf service call for {name} failed.")
 
         return config
 

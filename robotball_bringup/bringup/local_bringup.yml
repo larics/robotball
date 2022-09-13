@@ -53,7 +53,7 @@ windows:
         - rqt:
           - waitForRos; rosrun rqt_reconfigure rqt_reconfigure
         - rviz:
-          - waitForRos; rviz
+          - waitForRos; rosrun rviz rviz -d /home/marko/WS/sphero_ws/src/robotball/robotball/default.rviz
 
   - run:
       layout: tiled
