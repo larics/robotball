@@ -1,0 +1,14 @@
+<launch>
+    <node pkg="joy" type="joy_node" ns="robot_1" name="joy" output="screen">
+        <param name="dev" value="/dev/input/js0"/>
+    </node>
+
+    <node pkg="joy" type="joy_node" ns="robot_2" name="joy" output="screen">
+        <param name="dev" value="/dev/input/js1"/>
+    </node>
+
+    <node pkg="joy" type="joy_node" ns="robot_3" name="joy" output="screen">
+        <param name="dev" value="/dev/input/js2"/>
+    </node>
+
+</launch>

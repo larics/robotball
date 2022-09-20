@@ -50,6 +50,7 @@ windows:
           - roscore
         - joystick:
           - waitForRos; rosrun joy joy_node
+          # - waitForRos; roslaunch robotball_driver multiple_joysticks.launch
         - rqt:
           - waitForRos; rosrun rqt_reconfigure rqt_reconfigure
         - rviz:
